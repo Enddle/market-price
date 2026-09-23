@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "Price Change",
+  "version": "1.4.0",
+  "description": "Highlights prices and tracks real-time GOOGL stock changes via Finnhub WebSocket.",
+  "permissions": ["storage", "activeTab", "tabs"],
+  "host_permissions": [
+    "https://finnhub.io/*",
+    "wss://ws.finnhub.io/*",
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}

@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body {
+      width: 250px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      padding: 12px;
+      margin: 0;
+      background-color: #ffffff;
+      color: #333;
+    }
+    h3 {
+      margin: 0 0 10px 0;
+      font-size: 15px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .section-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: #6b7280;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid #e5e7eb;
+      padding-bottom: 3px;
+    }
+
+    /* Settings Section */
+    .settings-section {
+      margin-bottom: 14px;
+    }
+    .input-group {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+    input[type="text"] {
+      flex: 1;
+      padding: 6px 8px;
+      border: 1px solid #d1d5db;
+      border-radius: 4px;
+      font-size: 11px;
+    }
+    .btn-save {
+      padding: 6px 10px;
+      background-color: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-save:hover { opacity: 0.9; }
+
+    .status-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: #374151;
+      margin-bottom: 4px;
+      display: block;
+    }
+    textarea#statusText {
+      width: 100%;
+      height: 80px;
+      box-sizing: border-box;
+      background: #1e293b;
+      color: #38bdf8;
+      font-family: monospace;
+      font-size: 10px;
+      padding: 6px;
+      border: 1px solid #0f172a;
+      border-radius: 4px;
+      resize: none;
+    }
+
+    /* Testings Section */
+    .testings-section {
+      padding-top: 6px;
+    }
+    .field {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 36px;
+      height: 18px;
+    }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #ccc;
+      transition: .2s;
+      border-radius: 18px;
+    }
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 12px;
+      width: 12px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .2s;
+      border-radius: 50%;
+    }
+    input:checked + .slider { background-color: #eab308; }
+    input:checked + .slider:before { transform: translateX(18px); }
+
+    .test-buttons { display: flex; gap: 8px; }
+    .btn-test {
+      flex: 1;
+      padding: 7px 4px;
+      border: none;
+      border-radius: 5px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 11px;
+    }
+    .btn-up { background-color: #22c55e; color: white; }
+    .btn-down { background-color: #ef4444; color: white; }
+    .btn-test:hover { opacity: 0.9; }
+
+    .test-status {
+      margin-top: 6px;
+      font-size: 11px;
+      color: #6b7280;
+      text-align: center;
+      min-height: 14px;
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+  <h3>💲 Price Highlighter</h3>
+
+  <!-- Settings Section -->
+  <div class="settings-section">
+    <div class="section-title">⚙️ Settings</div>
+    <div class="input-group">
+      <input type="text" id="apiKeyInput" placeholder="Finnhub API Key...">
+      <button class="btn-save" id="btnSaveKey">Save</button>
+    </div>
+    <label class="status-label" for="statusText">Status Terminal:</label>
+    <textarea id="statusText" readonly placeholder="Waiting for status updates..."></textarea>
+  </div>
+
+  <!-- Testings Section -->
+  <div class="testings-section">
+    <div class="section-title">🧪 Testings</div>
+    <div class="field">
+      <label for="locateToggle">Locate Prices (Yellow)</label>
+      <label class="switch">
+        <input type="checkbox" id="locateToggle">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="test-buttons">
+      <button class="btn-test btn-up" id="btnUp">▲ Up</button>
+      <button class="btn-test btn-down" id="btnDown">▼ Down</button>
+    </div>
+    <div class="test-status" id="testStatus"></div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

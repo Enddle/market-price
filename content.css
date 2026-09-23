@@ -1,0 +1,29 @@
+.highlighted-price-ext {
+  border-radius: 3px !important;
+  padding: 1px 4px !important;
+  font-weight: bold !important;
+  display: inline-block !important;
+  outline: 1px solid rgba(0, 0, 0, 0.15) !important;
+  transition: background-color 1s ease, color 1s ease !important;
+}
+
+/* Yellow Locate State */
+.highlighted-price-ext.locate-yellow {
+  background-color: #ffef62 !important;
+  color: #111111 !important;
+  transition: background-color 0.2s ease !important;
+}
+
+/* Green Flash Up */
+.highlighted-price-ext.flash-up {
+  background-color: #22c55e !important;
+  color: #ffffff !important;
+  transition: none !important;
+}
+
+/* Red Flash Down */
+.highlighted-price-ext.flash-down {
+  background-color: #ef4444 !important;
+  color: #ffffff !important;
+  transition: none !important;
+}
