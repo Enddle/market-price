@@ -217,4 +217,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   btnRise.addEventListener('click', () => handleManualTest('up'));
   btnFall.addEventListener('click', () => handleManualTest('down'));
+
+  function displayVersionNumber() {
+    const versionEl = document.getElementById('versionNumber');
+    if (versionEl) {
+      versionEl.textContent = `v${chrome.runtime.getManifest().version}`;
+    }
+  }
+
+  // Call it inside DOMContentLoaded
+  displayVersionNumber();
 });

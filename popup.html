@@ -9,7 +9,7 @@
   <!-- Top Header: Symbol (Left), Status Dots (Right), Centered Live Percentage -->
   <div class="header-container">
     <div class="header-top-row">
-      <div class="symbol-display" id="symbolDisplay">––</div>
+      <div class="symbol-display" id="symbolDisplay">–––</div>
       <div class="status-dots">
         <span class="dot grey" id="marketDot" data-tooltip="Market: Closed"></span>
         <span class="dot grey" id="wsDot" data-tooltip="WebSocket: Not Subscribed"></span>
@@ -49,6 +49,7 @@
       <textarea id="statusText" readonly placeholder="Waiting for status updates..."></textarea>
 
       <!-- Action Buttons Row: Rise - Locate - Fall -->
+      <label class="tests-label">Tests</label>
       <div class="action-buttons">
         <button type="button" class="btn-action btn-rise" id="btnRise">Rise</button>
         <button type="button" class="btn-action btn-locate" id="btnLocate">Locate</button>
@@ -61,11 +62,16 @@
   <details id="aboutSection" class="foldable-section">
     <summary class="section-title">About</summary>
     <div class="section-content about-content">
-      <p class="about-text">Real-time market price assistant for web-based trading platforms.</p>
+      <p class="about-text">
+        Everything come with a price, specifically, at the market price. If we browse the internet as the menu of a Lobster restaurant, it would have M.P. written all over the place. <br>
+        Let's surf thriftily with <i>Market Price</i>!
+      </p>
       <div class="about-links">
-        <a href="https://github.com" id="githubLink" target="_blank" rel="noopener">GitHub</a>
+        <span class="version-number" id="versionNumber">0.0.0</span>
         <span class="link-separator">•</span>
-        <a href="https://instagram.com" id="instagramLink" target="_blank" rel="noopener">Instagram</a>
+        <a href="https://github.com/Enddle/market-price" id="githubLink" target="_blank" rel="noopener">view repo</a>
+        <span class="link-separator">•</span>
+        <a href="https://instagram.com/enddle.work" id="instagramLink" target="_blank" rel="noopener">@enddle.work</a>
       </div>
     </div>
   </details>

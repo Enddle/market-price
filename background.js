@@ -3,25 +3,7 @@ let currentSymbol = null;
 let lastStockPrice = null;
 let statusLogs = [];
 
-const DOMAIN_OVERRIDE_MAP = {
-  'google': 'Alphabet',
-  'youtube': 'Alphabet',
-  'chrome': 'Alphabet',
-  'gmail': 'Alphabet',
-  'facebook': 'Meta',
-  'instagram': 'Meta',
-  'whatsapp': 'Meta',
-  'oculus': 'Meta',
-  'aws': 'Amazon',
-  'twitch': 'Amazon',
-  'wholefoods': 'Amazon',
-  'linkedin': 'Microsoft',
-  'github': 'Microsoft',
-  'xbox': 'Microsoft',
-  'pixar': 'Disney',
-  'marvel': 'Disney',
-  'hulu': 'Disney'
-};
+importScripts('domainMap.js');
 
 function getRootDomainName(urlStr) {
   if (!urlStr) return '';

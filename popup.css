@@ -210,10 +210,20 @@ details[open] .section-title::after {
 }
 
 .status-label {
+  margin-top: 8px;
+  margin-bottom: 8px;
+}
+
+.tests-label {
+  margin-top: 4px;
+  margin-bottom: 0;
+}
+
+.status-label, 
+.tests-label {
   font-size: 12px;
   font-weight: 600;
   color: #4b5563;
-  margin-bottom: 4px;
   display: block;
 }
 
