@@ -2,177 +2,73 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <style>
-    body {
-      width: 250px;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      padding: 12px;
-      margin: 0;
-      background-color: #ffffff;
-      color: #333;
-    }
-    h3 {
-      margin: 0 0 10px 0;
-      font-size: 15px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .section-title {
-      font-size: 11px;
-      font-weight: 700;
-      color: #6b7280;
-      margin-bottom: 8px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      border-bottom: 1px solid #e5e7eb;
-      padding-bottom: 3px;
-    }
-
-    /* Settings Section */
-    .settings-section {
-      margin-bottom: 14px;
-    }
-    .input-group {
-      display: flex;
-      gap: 6px;
-      margin-bottom: 8px;
-    }
-    input[type="text"] {
-      flex: 1;
-      padding: 6px 8px;
-      border: 1px solid #d1d5db;
-      border-radius: 4px;
-      font-size: 11px;
-    }
-    .btn-save {
-      padding: 6px 10px;
-      background-color: #2563eb;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      font-size: 11px;
-      font-weight: 600;
-      cursor: pointer;
-    }
-    .btn-save:hover { opacity: 0.9; }
-
-    .status-label {
-      font-size: 11px;
-      font-weight: 600;
-      color: #374151;
-      margin-bottom: 4px;
-      display: block;
-    }
-    textarea#statusText {
-      width: 100%;
-      height: 80px;
-      box-sizing: border-box;
-      background: #1e293b;
-      color: #38bdf8;
-      font-family: monospace;
-      font-size: 10px;
-      padding: 6px;
-      border: 1px solid #0f172a;
-      border-radius: 4px;
-      resize: none;
-    }
-
-    /* Testings Section */
-    .testings-section {
-      padding-top: 6px;
-    }
-    .field {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 10px;
-      font-size: 12px;
-      font-weight: 500;
-    }
-    .switch {
-      position: relative;
-      display: inline-block;
-      width: 36px;
-      height: 18px;
-    }
-    .switch input { opacity: 0; width: 0; height: 0; }
-    .slider {
-      position: absolute;
-      cursor: pointer;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background-color: #ccc;
-      transition: .2s;
-      border-radius: 18px;
-    }
-    .slider:before {
-      position: absolute;
-      content: "";
-      height: 12px;
-      width: 12px;
-      left: 3px;
-      bottom: 3px;
-      background-color: white;
-      transition: .2s;
-      border-radius: 50%;
-    }
-    input:checked + .slider { background-color: #eab308; }
-    input:checked + .slider:before { transform: translateX(18px); }
-
-    .test-buttons { display: flex; gap: 8px; }
-    .btn-test {
-      flex: 1;
-      padding: 7px 4px;
-      border: none;
-      border-radius: 5px;
-      font-weight: 600;
-      cursor: pointer;
-      font-size: 11px;
-    }
-    .btn-up { background-color: #22c55e; color: white; }
-    .btn-down { background-color: #ef4444; color: white; }
-    .btn-test:hover { opacity: 0.9; }
-
-    .test-status {
-      margin-top: 6px;
-      font-size: 11px;
-      color: #6b7280;
-      text-align: center;
-      min-height: 14px;
-      font-family: monospace;
-    }
-  </style>
+  <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-  <h3>💲 Price Highlighter</h3>
 
-  <!-- Settings Section -->
-  <div class="settings-section">
-    <div class="section-title">⚙️ Settings</div>
-    <div class="input-group">
-      <input type="text" id="apiKeyInput" placeholder="Finnhub API Key...">
-      <button class="btn-save" id="btnSaveKey">Save</button>
+  <!-- Top Header: Symbol (Left), Status Dots (Right), Centered Live Percentage -->
+  <div class="header-container">
+    <div class="header-top-row">
+      <div class="symbol-display" id="symbolDisplay">––</div>
+      <div class="status-dots">
+        <span class="dot grey" id="marketDot" data-tooltip="Market: Closed"></span>
+        <span class="dot grey" id="wsDot" data-tooltip="WebSocket: Not Subscribed"></span>
+      </div>
     </div>
-    <label class="status-label" for="statusText">Status Terminal:</label>
-    <textarea id="statusText" readonly placeholder="Waiting for status updates..."></textarea>
+    <div class="percentage-display neutral" id="percentageDisplay">0.000%</div>
   </div>
 
-  <!-- Testings Section -->
-  <div class="testings-section">
-    <div class="section-title">🧪 Testings</div>
-    <div class="field">
-      <label for="locateToggle">Locate Prices (Yellow)</label>
-      <label class="switch">
-        <input type="checkbox" id="locateToggle">
-        <span class="slider"></span>
-      </label>
+  <!-- Settings Foldable Section -->
+  <details id="settingsSection" class="foldable-section">
+    <summary class="section-title">Settings</summary>
+    <div class="section-content">
+      <div class="input-group">
+        <div class="input-wrapper">
+          <input type="password" id="apiKeyInput" placeholder="API Key">
+          <button type="button" class="btn-eye" id="btnToggleVisibility" aria-label="Toggle API Key Visibility">
+            <svg id="eyeIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+              <line x1="1" y1="1" x2="23" y2="23"></line>
+            </svg>
+          </button>
+        </div>
+        <button type="button" class="btn-refresh" id="btnSaveKey" title="Save API Key & Reload">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Missing API Key Notice Line -->
+      <div id="apiKeyNotice" class="api-notice" style="display: none;">
+        Get a free API key at <a href="https://finnhub.io/" id="finnhubLink" target="_blank" rel="noopener">finnhub.io</a>
+      </div>
+
+      <label class="status-label" for="statusText">Status</label>
+      <textarea id="statusText" readonly placeholder="Waiting for status updates..."></textarea>
+
+      <!-- Action Buttons Row: Rise - Locate - Fall -->
+      <div class="action-buttons">
+        <button type="button" class="btn-action btn-rise" id="btnRise">Rise</button>
+        <button type="button" class="btn-action btn-locate" id="btnLocate">Locate</button>
+        <button type="button" class="btn-action btn-fall" id="btnFall">Fall</button>
+      </div>
     </div>
-    <div class="test-buttons">
-      <button class="btn-test btn-up" id="btnUp">▲ Up</button>
-      <button class="btn-test btn-down" id="btnDown">▼ Down</button>
+  </details>
+
+  <!-- About Foldable Section -->
+  <details id="aboutSection" class="foldable-section">
+    <summary class="section-title">About</summary>
+    <div class="section-content about-content">
+      <p class="about-text">Real-time market price assistant for web-based trading platforms.</p>
+      <div class="about-links">
+        <a href="https://github.com" id="githubLink" target="_blank" rel="noopener">GitHub</a>
+        <span class="link-separator">•</span>
+        <a href="https://instagram.com" id="instagramLink" target="_blank" rel="noopener">Instagram</a>
+      </div>
     </div>
-    <div class="test-status" id="testStatus"></div>
-  </div>
+  </details>
 
   <script src="popup.js"></script>
 </body>

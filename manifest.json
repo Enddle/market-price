@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Price Change",
-  "version": "1.4.0",
+  "version": "1.14.0",
   "description": "Highlights prices and tracks real-time GOOGL stock changes via Finnhub WebSocket.",
   "permissions": ["storage", "activeTab", "tabs"],
   "host_permissions": [
