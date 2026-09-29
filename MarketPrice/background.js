@@ -86,7 +86,7 @@ function setWsState(state) {
 function setTrackedSymbol(symbol) {
   currentSymbol = symbol;
   lastStockPrice = null;
-  const displaySymbol = symbol || '––';
+  const displaySymbol = symbol || '–––';
   chrome.storage.local.set({ trackedSymbol: displaySymbol, lastPct: 0, lastDirection: 'neutral' });
   chrome.runtime.sendMessage({ action: 'symbolUpdate', symbol: displaySymbol }).catch(() => {});
   chrome.runtime.sendMessage({ action: 'pctUpdate', pct: 0, direction: 'neutral' }).catch(() => {});
@@ -123,13 +123,81 @@ async function searchStockSymbol(domain, apiKey) {
   }
 }
 
+async function checkMarket(apiKey, tabId) {
+  logStatus('Checking US market status...');
+  try {
+    const res = await fetch(`https://finnhub.io/api/v1/stock/market-status?exchange=US&token=${apiKey}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    const data = await res.json();
+
+    if (data && data.isOpen) {
+      logStatus('Market is OPEN. Icon set to Blue.');
+      setExtensionIcon('blue', tabId);
+      setMarketState('open');
+
+      return true;
+
+    } else {
+      const session = data?.session ? ` (${data.session})` : '';
+      logStatus(`Market is CLOSED${session}. Icon remains Grey.`);
+      setExtensionIcon('grey', tabId);
+      setMarketState('closed');
+      closeWebSocket();
+
+      return false;
+    }
+  } catch (err) {
+    logStatus(`Market status API error: ${err.message}`);
+    setExtensionIcon('grey', tabId);
+    setMarketState('closed');
+    setWsState('disconnected');
+
+    return false;
+  }
+}
+
+async function checkPriceOnce(apiKey, activeTabId, symbol) {
+  logStatus('Checking current stock price...');
+  try {
+    const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${apiKey}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    const data = await res.json();
+
+    if (data && data.c) {
+      const direction = 'up';
+      const price = data.c;
+
+      logStatus(`Current price for ${symbol}: $${price}`);
+
+      // chrome.storage.local.set({ lastPct: 0, lastDirection: direction });
+      // chrome.runtime.sendMessage({ action: 'pctUpdate', pct: 0, direction: direction }).catch(() => {});
+
+      if (activeTabId) {
+        chrome.tabs.sendMessage(activeTabId, {
+          action: 'setPrices',
+          direction: direction,
+          price: price
+        }).catch(() => {});
+      }
+    } else {
+      logStatus(`Stock price API error, data: ${data}`);
+    }
+  } catch (err) {
+    logStatus(`Stock price API error: ${err.message}`);
+
+    return false;
+  }
+}
+
 async function processPageStart(tabId, pageUrl) {
   setExtensionIcon('grey', tabId);
 
   const { apiKey } = await chrome.storage.sync.get(['apiKey']);
   if (!apiKey) {
     logStatus('No Finnhub API key found. Enter key in Settings.');
-    setTrackedSymbol('––');
+    setTrackedSymbol('–––');
     setMarketState('closed');
     setWsState('disconnected');
     return;
@@ -144,38 +212,20 @@ async function processPageStart(tabId, pageUrl) {
     logStatus('Standard domain name not detected.');
   }
 
-  setTrackedSymbol(foundSymbol);
+  setTrackedSymbol(foundSymbol);  // null safe
 
-  logStatus('Checking US market status...');
-  try {
-    const res = await fetch(`https://finnhub.io/api/v1/stock/market-status?exchange=US&token=${apiKey}`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-    const data = await res.json();
-
-    if (data && data.isOpen) {
-      logStatus('Market is OPEN. Icon set to Blue.');
-      setExtensionIcon('blue', tabId);
-      setMarketState('open');
-
-      if (foundSymbol) {
-        connectWebSocket(apiKey, tabId, foundSymbol);
-      } else {
-        logStatus('Skipping WebSocket subscription: No valid symbol tracked.');
-        setWsState('disconnected');
-      }
-    } else {
-      const session = data?.session ? ` (${data.session})` : '';
-      logStatus(`Market is CLOSED${session}. Icon remains Grey.`);
-      setExtensionIcon('grey', tabId);
-      setMarketState('closed');
-      closeWebSocket();
-    }
-  } catch (err) {
-    logStatus(`Market status API error: ${err.message}`);
-    setExtensionIcon('grey', tabId);
-    setMarketState('closed');
+  if (!foundSymbol) {
+    logStatus('Actions skipped: No valid symbol.');
     setWsState('disconnected');
+    return;
+  }
+
+  await checkPriceOnce(apiKey, tabId, foundSymbol);
+
+  const open = await checkMarket(apiKey, tabId);
+
+  if (open) {
+    connectWebSocket(apiKey, tabId, foundSymbol);
   }
 }
 

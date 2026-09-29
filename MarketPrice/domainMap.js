@@ -121,6 +121,7 @@ const DOMAIN_OVERRIDE_MAP = {
 
   // The Coca-Cola Company (KO)
   'cocacola': 'Coca-Cola',
+  'coca-colastore': 'Coca-Cola',
   'sprite': 'Coca-Cola',
   'fanta': 'Coca-Cola',
 

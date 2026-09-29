@@ -55,8 +55,8 @@ document.addEventListener('DOMContentLoaded', () => {
   );
 
   function updateSymbolDisplay(symbol) {
-    if (!symbol || symbol === 'NONE' || symbol === '––') {
-      symbolDisplay.textContent = '––';
+    if (!symbol || symbol === 'NONE' || symbol === '–––') {
+      symbolDisplay.textContent = '–––';
     } else {
       symbolDisplay.textContent = symbol;
     }

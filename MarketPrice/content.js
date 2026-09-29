@@ -148,6 +148,46 @@ function adjustPrices(direction, percentage) {
   });
 }
 
+function setPrices(direction, price) {
+  locateActive = false;
+  ensurePricesWrapped();
+
+  const flashClass = direction === 'up' ? 'flash-up' : 'flash-down';
+
+  const highlights = document.querySelectorAll('.highlighted-price-ext');
+
+  highlights.forEach(span => {
+    span.classList.remove('locate-yellow');
+
+    let currentVal = parseFloat(span.dataset.currentPrice);
+    if (isNaN(currentVal)) {
+      // currentVal = parseFloat(span.textContent.replace(/[^0-9.]/g, ''));
+      span.dataset.prefix = span.textContent.match(/^\$\s*/)?.[0] || '$';
+      span.dataset.hasCommas = span.textContent.includes(',') ? 'true' : 'false';
+    }
+
+    const prefix = span.dataset.prefix || '$';
+    const hasCommas = span.dataset.hasCommas === 'true';
+
+    const formattedNum = hasCommas 
+      ? price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      : price.toFixed(2);
+    
+    span.textContent = `${prefix}${formattedNum}`;
+    span.dataset.currentPrice = price;
+
+    // Trigger green/red flash and fade out transition
+    span.classList.remove('flash-up', 'flash-down');
+    void span.offsetWidth; // Repaint trigger
+
+    span.classList.add(flashClass);
+
+    setTimeout(() => {
+      span.classList.remove(flashClass);
+    }, 50);
+  });
+}
+
 function observeDynamicContent() {
   if (observer) observer.disconnect();
   observer = new MutationObserver(mutations => {
@@ -170,6 +210,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     sendResponse({ status: 'done' });
   } else if (request.action === 'adjustPrices') {
     adjustPrices(request.direction, request.percentage);
+    sendResponse({ status: 'done' });
+  } else if (request.action === 'setPrices') {
+    setPrices(request.direction, request.price);
     sendResponse({ status: 'done' });
   }
 });
