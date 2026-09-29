@@ -169,17 +169,14 @@ async function checkPriceOnce(apiKey, activeTabId, symbol) {
       const direction = 'up';
       const price = data.c;
 
+      lastStockPrice = price;
       logStatus(`Current price for ${symbol}: $${price}`);
 
       // chrome.storage.local.set({ lastPct: 0, lastDirection: direction });
       // chrome.runtime.sendMessage({ action: 'pctUpdate', pct: 0, direction: direction }).catch(() => {});
 
       if (activeTabId) {
-        chrome.tabs.sendMessage(activeTabId, {
-          action: 'setPrices',
-          direction: direction,
-          price: price
-        }).catch(() => {});
+        chrome.tabs.sendMessage(activeTabId, { action: 'setPrices', direction: direction, price: price }).catch(() => {});
       }
     } else {
       logStatus(`Stock price API error, data: ${data}`);
@@ -273,11 +270,8 @@ function connectWebSocket(apiKey, activeTabId, symbol) {
               chrome.runtime.sendMessage({ action: 'pctUpdate', pct: pct, direction: direction }).catch(() => {});
 
               if (activeTabId) {
-                chrome.tabs.sendMessage(activeTabId, {
-                  action: 'adjustPrices',
-                  direction: direction,
-                  percentage: pct
-                }).catch(() => {});
+                // chrome.tabs.sendMessage(activeTabId, { action: 'adjustPrices', direction: direction, percentage: pct }).catch(() => {});
+                chrome.tabs.sendMessage(activeTabId, { action: 'setPrices', direction: direction, price: newPrice }).catch(() => {});
               }
             }
           }
