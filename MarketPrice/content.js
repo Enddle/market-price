@@ -143,6 +143,7 @@ function adjustPrices(direction, percentage) {
     span.classList.add(flashClass);
 
     scrollPage(direction, percentage);
+    colorFlash(direction);
 
     setTimeout(() => {
       span.classList.remove(flashClass);
@@ -168,6 +169,22 @@ function scrollPage(direction, percentage) {
   } else {
     window.scrollBy({ top: delta, behavior: 'smooth' });
   }
+}
+
+function colorFlash(color) {
+  const hue = color === 'up' ? 80 : 310;  // up is green
+  
+  document.body.style.filter = `grayscale(100%) sepia(100%) hue-rotate(${hue}deg) saturate(100%)`;
+  document.body.style.transition = 'filter 100ms ease-in-out';
+  document.body.style.filter = `grayscale(100%) sepia(100%) hue-rotate(${hue}deg) saturate(600%)`;
+
+  setTimeout(() => {
+    document.body.style.filter = '';
+  }, 200);
+
+  setTimeout(() => {
+    document.body.style.transition = '';
+  }, 300);
 }
 
 function setPrices(direction, price) {
