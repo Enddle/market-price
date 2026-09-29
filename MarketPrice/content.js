@@ -171,20 +171,33 @@ function scrollPage(direction, percentage) {
   }
 }
 
+function colorFilterSvg(matrix) {
+  return `url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg'><filter id='f'><feColorMatrix type='matrix' values='${matrix}'/></filter></svg>#f\")`;
+}
+
 function colorFlash(color) {
-  const hue = color === 'up' ? 80 : 310;  // up is green
-  
-  document.body.style.filter = `grayscale(100%) sepia(100%) hue-rotate(${hue}deg) saturate(100%)`;
-  document.body.style.transition = 'filter 100ms ease-in-out';
-  document.body.style.filter = `grayscale(100%) sepia(100%) hue-rotate(${hue}deg) saturate(600%)`;
+  if (color === 'up') {  // green
+    setTimeout(() => document.body.style.filter = colorFilterSvg('0.75 0 0 0 0 0.05 0.93 0.02 0 0 0 0 0.75 0 0 0 0 0 1 0'), 25);
+    setTimeout(() => document.body.style.filter = colorFilterSvg('0.50 0 0 0 0 0.11 0.86 0.04 0 0 0 0 0.50 0 0 0 0 0 1 0'), 50);
+    setTimeout(() => document.body.style.filter = colorFilterSvg('0.25 0 0 0 0 0.16 0.79 0.05 0 0 0 0 0.25 0 0 0 0 0 1 0'), 75);
+    setTimeout(() => document.body.style.filter = colorFilterSvg('0.00 0 0 0 0 0.21 0.72 0.07 0 0 0 0 0.00 0 0 0 0 0 1 0'), 100);
 
-  setTimeout(() => {
-    document.body.style.filter = '';
-  }, 200);
+    setTimeout(() => document.body.style.filter = colorFilterSvg('0.25 0 0 0 0 0.16 0.79 0.05 0 0 0 0 0.25 0 0 0 0 0 1 0'), 325);
+    setTimeout(() => document.body.style.filter = colorFilterSvg('0.50 0 0 0 0 0.11 0.86 0.04 0 0 0 0 0.50 0 0 0 0 0 1 0'), 350);
+    setTimeout(() => document.body.style.filter = colorFilterSvg('0.75 0 0 0 0 0.05 0.93 0.02 0 0 0 0 0.75 0 0 0 0 0 1 0'), 375);
+    setTimeout(() => document.body.style.filter = '', 400);
 
-  setTimeout(() => {
-    document.body.style.transition = '';
-  }, 300);
+  } else {  // red
+    setTimeout(() => document.body.style.filter = colorFilterSvg('0.80 0.18 0.02 0 0 0 0.75 0 0 0 0 0 0.75 0 0 0 0 0 1 0'), 25);
+    setTimeout(() => document.body.style.filter = colorFilterSvg('0.61 0.36 0.04 0 0 0 0.50 0 0 0 0 0 0.50 0 0 0 0 0 1 0'), 50);
+    setTimeout(() => document.body.style.filter = colorFilterSvg('0.41 0.54 0.05 0 0 0 0.25 0 0 0 0 0 0.25 0 0 0 0 0 1 0'), 75);
+    setTimeout(() => document.body.style.filter = colorFilterSvg('0.21 0.72 0.07 0 0 0 0.00 0 0 0 0 0 0.00 0 0 0 0 0 1 0'), 100);
+
+    setTimeout(() => document.body.style.filter = colorFilterSvg('0.41 0.54 0.05 0 0 0 0.25 0 0 0 0 0 0.25 0 0 0 0 0 1 0'), 325);
+    setTimeout(() => document.body.style.filter = colorFilterSvg('0.61 0.36 0.04 0 0 0 0.50 0 0 0 0 0 0.50 0 0 0 0 0 1 0'), 350);
+    setTimeout(() => document.body.style.filter = colorFilterSvg('0.80 0.18 0.02 0 0 0 0.75 0 0 0 0 0 0.75 0 0 0 0 0 1 0'), 375);
+    setTimeout(() => document.body.style.filter = '', 400);
+  }
 }
 
 function setPrices(direction, price) {

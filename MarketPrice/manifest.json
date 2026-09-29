@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Market Price",
-  "version": "1.17.15",
+  "version": "1.17.17",
   "description": "Everything come with a price, specifically, at the market price.",
   "permissions": ["storage", "activeTab", "tabs"],
   "host_permissions": [
