@@ -142,10 +142,32 @@ function adjustPrices(direction, percentage) {
 
     span.classList.add(flashClass);
 
+    scrollPage(direction, percentage);
+
     setTimeout(() => {
       span.classList.remove(flashClass);
     }, 50);
   });
+}
+
+function scrollPage(direction, percentage) {
+  const height = document.documentElement.scrollHeight;
+  const distance = height * percentage / 100;
+
+  const delta = direction === 'down' ? distance : -distance;
+  const top = (window.scrollY === 0) && (delta < 0);
+  const bottom = (window.innerHeight + window.scrollY >= height - 1) && (delta > 0);
+  
+  if (top || bottom) {  // if top / bottom scroll beyond page
+    const scrollPromise = (top) => new Promise((resolve) => {
+      window.addEventListener('scrollend', resolve, { once: true });
+      window.scrollBy({ top, behavior: 'smooth' });
+    });
+    
+    scrollPromise(-delta).then(() => window.scrollBy({ top: delta, behavior: 'smooth' }));
+  } else {
+    window.scrollBy({ top: delta, behavior: 'smooth' });
+  }
 }
 
 function setPrices(direction, price) {
