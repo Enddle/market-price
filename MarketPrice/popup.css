@@ -75,18 +75,61 @@ body {
   visibility: visible;
 }
 
-/* Percentage Display with Expanded Vertical Spacing */
-.percentage-display {
-  font-size: 18px;
-  font-weight: 700;
+.price-display {
+  line-height: 32px;
   text-align: center;
-  margin: 18px 0 16px 0; /* Enhanced top & bottom spacing */
+  border-radius: 3px !important;
+  padding: 4px 4px !important;
+  margin: 12px 0 12px 0;
+  transition: background-color 0.1s ease;
+  cursor: pointer;
+}
+
+.price-display .price {
+  font-size: 24px;
+  font-weight: 700;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
-.percentage-display.up { color: #16a34a; }
-.percentage-display.down { color: #dc2626; }
-.percentage-display.neutral { color: #6b7280; }
+.price-display .follow,
+.price-display .unfollow {
+  font-size: 13px;
+  font-weight: 700;
+  color: white;
+  user-select: none;
+}
+
+.price-display .unfollow { display: none; }
+.price-display .price { display: none; }
+
+.price-display.following .follow { display: none; }
+.price-display.following .price { display: block; }
+
+.price-display.following:hover .unfollow { display: block; }
+.price-display.following:hover .price { display: none; }
+
+
+/* Percentage Display with Expanded Vertical Spacing */
+.percentage-display {
+  font-size: 16px;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 20px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.colored.up { color: #16a34a; }
+.colored.down { color: #dc2626; }
+.colored.neutral { color: #6b7280; }
+
+.price-display.up { background-color: #22c55e; }
+.price-display.down { background-color: #ef4444; }
+.price-display.neutral { background-color: #888f9b; }
+
+.price-display.following:not(:hover) {
+  background: none;
+  outline: rgba(0, 0, 0, 0.15) solid 1px !important;
+}
 
 /* Foldable Sections */
 .foldable-section {

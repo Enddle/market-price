@@ -89,7 +89,7 @@ function setTrackedSymbol(symbol) {
   const displaySymbol = symbol || '–––';
   chrome.storage.local.set({ trackedSymbol: displaySymbol, lastPct: 0, lastDirection: 'neutral' });
   chrome.runtime.sendMessage({ action: 'symbolUpdate', symbol: displaySymbol }).catch(() => {});
-  chrome.runtime.sendMessage({ action: 'pctUpdate', pct: 0, direction: 'neutral' }).catch(() => {});
+  chrome.runtime.sendMessage({ action: 'displayUpdate', price: 0, pct: 0, direction: 'neutral' }).catch(() => {});
 }
 
 async function searchStockSymbol(domain, apiKey) {
@@ -103,7 +103,7 @@ async function searchStockSymbol(domain, apiKey) {
   logStatus(`Searching stock symbol for '${queryKeyword}'...`);
 
   try {
-    const res = await fetch(`https://finnhub.io/api/v1/search?q=${encodeURIComponent(queryKeyword)}&token=${apiKey}`);
+    const res = await fetch(`https://finnhub.io/api/v1/search?q=${encodeURIComponent(queryKeyword)}&exchange=US&token=${apiKey}`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
     const data = await res.json();
@@ -158,7 +158,7 @@ async function checkMarket(apiKey, tabId) {
 }
 
 async function checkPriceOnce(apiKey, activeTabId, symbol) {
-  logStatus('Checking current stock price...');
+  logStatus('Checking current stock price: ' + symbol);
   try {
     const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${apiKey}`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -179,7 +179,7 @@ async function checkPriceOnce(apiKey, activeTabId, symbol) {
         chrome.tabs.sendMessage(activeTabId, { action: 'setPrices', direction: direction, price: price }).catch(() => {});
       }
     } else {
-      logStatus(`Stock price API error, data: ${data}`);
+      logStatus(`Stock price API error, data: ${ JSON.stringify(data) }`);
     }
   } catch (err) {
     logStatus(`Stock price API error: ${err.message}`);
@@ -267,7 +267,7 @@ function connectWebSocket(apiKey, activeTabId, symbol) {
               lastStockPrice = newPrice;
 
               chrome.storage.local.set({ lastPct: pct, lastDirection: direction });
-              chrome.runtime.sendMessage({ action: 'pctUpdate', pct: pct, direction: direction }).catch(() => {});
+              chrome.runtime.sendMessage({ action: 'displayUpdate', price: newPrice, pct: pct, direction: direction }).catch(() => {});
 
               if (activeTabId) {
                 // chrome.tabs.sendMessage(activeTabId, { action: 'adjustPrices', direction: direction, percentage: pct }).catch(() => {});

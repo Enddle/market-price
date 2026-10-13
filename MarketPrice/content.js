@@ -142,12 +142,11 @@ function adjustPrices(direction, percentage) {
 
     span.classList.add(flashClass);
 
-    scrollPage(direction, percentage);
-    colorFlash(direction);
-
     setTimeout(() => {
       span.classList.remove(flashClass);
     }, 50);
+
+    scrollPage(direction, percentage);
   });
 }
 
@@ -262,9 +261,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     sendResponse({ status: 'done' });
   } else if (request.action === 'adjustPrices') {
     adjustPrices(request.direction, request.percentage);
+    colorFlash(request.direction);
     sendResponse({ status: 'done' });
   } else if (request.action === 'setPrices') {
     setPrices(request.direction, request.price);
+    colorFlash(request.direction);
     sendResponse({ status: 'done' });
   }
 });

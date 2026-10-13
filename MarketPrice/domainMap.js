@@ -130,6 +130,9 @@ const DOMAIN_OVERRIDE_MAP = {
   'kfc': 'Yum! Brands',
   'pizzahut': 'Yum! Brands',
 
+  // Samsung (US stock)
+  'samsung': 'SSNLF',
+
   // Standalone Public Digital Platforms
   'spotify': 'Spotify',
   'snapchat': 'Snap',

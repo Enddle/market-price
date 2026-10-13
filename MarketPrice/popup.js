@@ -87,16 +87,35 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  function updatePercentageDisplay(pct, direction) {
+  const priceFollow = document.getElementById('priceFollow');
+  const priceDisplay = document.getElementById('priceDisplay');
+
+  let isFollowingPrice = false;
+
+  priceFollow.addEventListener('click', function () {
+    priceFollow.classList.toggle("following");
+    isFollowingPrice = !isFollowingPrice;
+  });
+
+  function updateDisplays(price, pct, direction) {
     percentageDisplay.classList.remove('up', 'down', 'neutral');
+    priceFollow.classList.remove('up', 'down', 'neutral');
+
+    if (price == 0) {
+      priceDisplay.textContent = '$--.--';
+    } else {
+      priceDisplay.textContent = '$' + parseFloat(price).toFixed(2);
+    }
 
     if (pct === undefined || pct === null || direction === 'neutral') {
       percentageDisplay.textContent = '0.000%';
       percentageDisplay.classList.add('neutral');
+      priceFollow.classList.add('neutral');
     } else {
       const sign = direction === 'up' ? '+' : '-';
       percentageDisplay.textContent = `${sign}${parseFloat(pct).toFixed(3)}%`;
       percentageDisplay.classList.add(direction);
+      priceFollow.classList.add(direction);
     }
   }
 
@@ -172,8 +191,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (request.action === 'wsStateUpdate') {
       updateWsDot(request.state);
     }
-    if (request.action === 'pctUpdate') {
-      updatePercentageDisplay(request.pct, request.direction);
+    if (request.action === 'displayUpdate') {
+      updateDisplays(request.price, request.pct, request.direction);
     }
   });
 
