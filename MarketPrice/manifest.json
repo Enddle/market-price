@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Market Price",
-  "version": "1.18.29",
+  "version": "1.18.30",
   "description": "Everything come with a price, specifically, at the market price.",
   "icons": {
     "16":  "icons/icon_16.png",

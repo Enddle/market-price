@@ -153,7 +153,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     sendMessageToTab({ action: 'toggleFollow', enabled: follow });
 
-    if (follow && lastPrice) {
+    if (follow) {
       priceFollowBtn.classList.add("following");
       sendMessageToTab({ action: 'setPrices', direction: 'up', price: lastPrice });
 

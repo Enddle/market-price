@@ -285,16 +285,20 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     setFollowPrice(request.enabled);
     sendResponse({ status: 'done' });
   } else if (request.action === 'adjustPrices') {
-    adjustPrices(request.direction, request.percentage);
-    colorFlash(request.direction);
-    scrollPage(request.direction, request.percentage);
+    if (request.percentage) {
+      adjustPrices(request.direction, request.percentage);
+      colorFlash(request.direction);
+      scrollPage(request.direction, request.percentage);
+    }
     sendResponse({ status: 'done' });
   } else if (request.action === 'setPrices') {
     if (followingPrice) {
       setPrices(request.direction, request.price);
     }
-    colorFlash(request.direction);
-    scrollPage(request.direction, request.percentage);
+    if (request.percentage || (followingPrice && request.price)) {
+      colorFlash(request.direction);
+      scrollPage(request.direction, request.percentage);
+    }
     sendResponse({ status: 'done' });
   }
 });
