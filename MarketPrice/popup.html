@@ -15,7 +15,7 @@
         <span class="dot grey" id="wsDot" data-tooltip="WebSocket: Not Subscribed"></span>
       </div>
     </div>
-    <div class="price-display colored neutral" id="priceFollow">
+    <div class="price-display colored neutral" id="priceFollowBtn">
       <span class="follow">follow stock price</span>
       <span class="unfollow">unfollow stock price</span>
       <span class="price" id="priceDisplay">$--.--</span>
@@ -27,9 +27,24 @@
   <details id="settingsSection" class="foldable-section">
     <summary class="section-title">Settings</summary>
     <div class="section-content">
+
+      <div class="toggle-group">
+        <label for="alwaysFollowToggle" class="text">Always Follow Price</label>
+        <label class="switch">
+          <input type="checkbox" id="alwaysFollowToggle">
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="input-group">
+        <label for="defaultSymbolInput" class="text">Default Symbol</label>
+        <input type="text" id="defaultSymbolInput" class="underline-input" maxlength="5" pattern="[A-Za-z]+" placeholder="">
+      </div>
+
+      <label for="apiKeyInput" class="text">API Key</label>
       <div class="input-group">
         <div class="input-wrapper">
-          <input type="password" id="apiKeyInput" placeholder="API Key">
+          <input type="password" id="apiKeyInput" placeholder="">
           <button type="button" class="btn-eye" id="btnToggleVisibility" aria-label="Toggle API Key Visibility">
             <svg id="eyeIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
@@ -50,11 +65,11 @@
         Get a free API key at <a href="https://finnhub.io/" id="finnhubLink" target="_blank" rel="noopener">finnhub.io</a>
       </div>
 
-      <label class="status-label" for="statusText">Status</label>
+      <label class="text" for="statusText">Status</label>
       <textarea id="statusText" readonly placeholder="Waiting for status updates..."></textarea>
 
       <!-- Action Buttons Row: Rise - Locate - Fall -->
-      <label class="tests-label">Tests</label>
+      <label class="text">Tests</label>
       <div class="action-buttons">
         <button type="button" class="btn-action btn-rise" id="btnRise">Rise</button>
         <button type="button" class="btn-action btn-locate" id="btnLocate">Locate</button>

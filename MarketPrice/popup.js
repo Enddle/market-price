@@ -2,13 +2,15 @@ document.addEventListener('DOMContentLoaded', () => {
   const symbolDisplay = document.getElementById('symbolDisplay');
   const marketDot = document.getElementById('marketDot');
   const wsDot = document.getElementById('wsDot');
+  const priceDisplay = document.getElementById('priceDisplay');
+  const priceFollowBtn = document.getElementById('priceFollowBtn');
   const percentageDisplay = document.getElementById('percentageDisplay');
+
   const settingsSection = document.getElementById('settingsSection');
+  const alwaysFollowToggle = document.getElementById('alwaysFollowToggle');
+  const defaultSymbolInput = document.getElementById('defaultSymbolInput');
   const apiKeyInput = document.getElementById('apiKeyInput');
   const apiKeyNotice = document.getElementById('apiKeyNotice');
-  const finnhubLink = document.getElementById('finnhubLink');
-  const githubLink = document.getElementById('githubLink');
-  const instagramLink = document.getElementById('instagramLink');
   const btnToggleVisibility = document.getElementById('btnToggleVisibility');
   const eyeIcon = document.getElementById('eyeIcon');
   const btnSaveKey = document.getElementById('btnSaveKey');
@@ -17,13 +19,22 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnLocate = document.getElementById('btnLocate');
   const btnFall = document.getElementById('btnFall');
 
+  const finnhubLink = document.getElementById('finnhubLink');
+  const githubLink = document.getElementById('githubLink');
+  const instagramLink = document.getElementById('instagramLink');
+  const finnhubLinkUrl = 'https://finnhub.io/';
+  const githubLinkUrl = 'https://github.com/Enddle/market-price';
+  const instagramLinkUrl = 'https://instagram.com/enddle.work';
+
+  let isFollowingPrice = false;
   let isLocateActive = false;
+  let lastPrice = 0;
 
   const eyeSvg = `<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>`;
   const eyeOffSvg = `<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line>`;
 
   // Load saved API key & set default section folding state
-  chrome.storage.sync.get(['apiKey', 'locateActive'], (data) => {
+  chrome.storage.sync.get(['apiKey', 'locateActive', 'alwaysFollow', 'defaultSymbol'], (data) => {
     if (data.apiKey) {
       apiKeyInput.value = data.apiKey;
       apiKeyNotice.style.display = 'none';
@@ -33,19 +44,19 @@ document.addEventListener('DOMContentLoaded', () => {
       settingsSection.open = true; // Auto-open when key is missing
     }
 
-    if (data.locateActive !== undefined) {
-      setLocateState(data.locateActive);
-    }
+    setLocateState(data.locateActive);
+    updateAlwaysFollow(data.alwaysFollow);
+    updateDefaultSymbol(data.defaultSymbol);
   });
 
   // Load saved state (symbol, market, websocket, logs, percentage)
   chrome.storage.local.get(
-    ['trackedSymbol', 'marketState', 'wsState', 'statusLog', 'lastPct', 'lastDirection'],
+    ['trackedSymbol', 'marketState', 'wsState', 'statusLog', 'lastPrice', 'lastPct', 'lastDirection'],
     (data) => {
       updateSymbolDisplay(data.trackedSymbol);
       updateMarketDot(data.marketState);
       updateWsDot(data.wsState);
-      updatePercentageDisplay(data.lastPct, data.lastDirection);
+      updateDisplays(data.lastPrice, data.lastPct, data.lastDirection);
 
       if (data.statusLog) {
         statusText.value = data.statusLog;
@@ -87,40 +98,93 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  const priceFollow = document.getElementById('priceFollow');
-  const priceDisplay = document.getElementById('priceDisplay');
-
-  let isFollowingPrice = false;
-
-  priceFollow.addEventListener('click', function () {
-    priceFollow.classList.toggle("following");
-    isFollowingPrice = !isFollowingPrice;
-  });
-
   function updateDisplays(price, pct, direction) {
     percentageDisplay.classList.remove('up', 'down', 'neutral');
-    priceFollow.classList.remove('up', 'down', 'neutral');
+    priceFollowBtn.classList.remove('up', 'down', 'neutral');
 
-    if (price == 0) {
+    if (!price) {  // undefined, null, and 0
       priceDisplay.textContent = '$--.--';
     } else {
       priceDisplay.textContent = '$' + parseFloat(price).toFixed(2);
+      lastPrice = price;
     }
 
-    if (pct === undefined || pct === null || direction === 'neutral') {
+    if (!pct || direction === 'neutral') {
       percentageDisplay.textContent = '0.000%';
       percentageDisplay.classList.add('neutral');
-      priceFollow.classList.add('neutral');
+      priceFollowBtn.classList.add('neutral');
     } else {
       const sign = direction === 'up' ? '+' : '-';
       percentageDisplay.textContent = `${sign}${parseFloat(pct).toFixed(3)}%`;
       percentageDisplay.classList.add(direction);
-      priceFollow.classList.add(direction);
+      priceFollowBtn.classList.add(direction);
+    }
+  }
+
+  function updateAlwaysFollow(alwaysFollow) {
+    const follow = alwaysFollow ?? false;  // read undefined / null as false
+    
+    alwaysFollowToggle.checked = follow;
+
+    toggleFollowPrice(follow);
+  }
+
+  alwaysFollowToggle.addEventListener('change', (e) => {
+    const isChecked = e.target.checked;
+
+    toggleFollowPrice(isChecked);
+
+    // set to blue color before data is saved
+    alwaysFollowToggle.classList.add('loading');
+
+    chrome.storage.sync.set({ alwaysFollow: isChecked }, () => {
+      alwaysFollowToggle.classList.remove('loading');
+    });
+  });
+
+  priceFollowBtn.addEventListener('click', function () {
+    toggleFollowPrice(!isFollowingPrice);
+  });
+
+  function toggleFollowPrice(follow) {
+    isFollowingPrice = follow;
+
+    setLocateState(false);
+
+    sendMessageToTab({ action: 'toggleFollow', enabled: follow });
+
+    if (follow && lastPrice) {
+      priceFollowBtn.classList.add("following");
+      sendMessageToTab({ action: 'setPrices', direction: 'up', price: lastPrice });
+
+    } else {
+      priceFollowBtn.classList.remove("following");
+    }
+  }
+
+  defaultSymbolInput.addEventListener('input', (e) => {
+    defaultSymbolInput.classList.remove('saved');
+    const symbol = e.target.value.replace(/[^a-zA-Z]/g, '').toUpperCase();
+    e.target.value = symbol;
+  });
+
+  defaultSymbolInput.addEventListener('focusout', (e) => {
+    const symbol = e.target.value.replace(/[^a-zA-Z]/g, '').toUpperCase();
+    e.target.value = symbol;
+
+    chrome.storage.sync.set({ defaultSymbol: symbol }, () => {
+      defaultSymbolInput.classList.add('saved');
+    });
+  });
+
+  function updateDefaultSymbol(defaultSymbol) {
+    if (defaultSymbol) {
+      defaultSymbolInput.value = defaultSymbol;
     }
   }
 
   function setLocateState(active) {
-    isLocateActive = active;
+    isLocateActive = active ?? false;
     if (isLocateActive) {
       btnLocate.classList.add('active');
     } else {
@@ -149,9 +213,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  setupExternalLink(finnhubLink, 'https://finnhub.io/');
-  setupExternalLink(githubLink, 'https://github.com');
-  setupExternalLink(instagramLink, 'https://instagram.com');
+  setupExternalLink(finnhubLink, finnhubLinkUrl);
+  setupExternalLink(githubLink, githubLinkUrl);
+  setupExternalLink(instagramLink, instagramLinkUrl);
 
   // Save API key & Reload
   btnSaveKey.addEventListener('click', () => {
@@ -219,19 +283,15 @@ document.addEventListener('DOMContentLoaded', () => {
     if (isLocateActive) {
       setLocateState(false);
       chrome.storage.sync.set({ locateActive: false });
-      sendMessageToTab({ action: 'toggleLocate', enabled: false });
+      // sendMessageToTab({ action: 'toggleLocate', enabled: false });  // adjustPrices will remove highlight
     }
 
     const pct = getRandomPercentage();
 
-    updatePercentageDisplay(pct, direction);
+    updateDisplays(0, pct, direction);
     chrome.storage.local.set({ lastPct: pct, lastDirection: direction });
 
-    sendMessageToTab({
-      action: 'adjustPrices',
-      direction: direction,
-      percentage: pct
-    });
+    sendMessageToTab({ action: 'adjustPrices', direction: direction, percentage: pct });
   }
 
   btnRise.addEventListener('click', () => handleManualTest('up'));

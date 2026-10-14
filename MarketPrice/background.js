@@ -87,8 +87,12 @@ function setTrackedSymbol(symbol) {
   currentSymbol = symbol;
   lastStockPrice = null;
   const displaySymbol = symbol || '–––';
-  chrome.storage.local.set({ trackedSymbol: displaySymbol, lastPct: 0, lastDirection: 'neutral' });
+  chrome.storage.local.set({ trackedSymbol: displaySymbol });
   chrome.runtime.sendMessage({ action: 'symbolUpdate', symbol: displaySymbol }).catch(() => {});
+}
+
+function emptyPrices() {
+  chrome.storage.local.set({ lastPrice: 0, lastPct: 0, lastDirection: 'neutral' });
   chrome.runtime.sendMessage({ action: 'displayUpdate', price: 0, pct: 0, direction: 'neutral' }).catch(() => {});
 }
 
@@ -172,14 +176,22 @@ async function checkPriceOnce(apiKey, activeTabId, symbol) {
       lastStockPrice = price;
       logStatus(`Current price for ${symbol}: $${price}`);
 
-      // chrome.storage.local.set({ lastPct: 0, lastDirection: direction });
-      // chrome.runtime.sendMessage({ action: 'pctUpdate', pct: 0, direction: direction }).catch(() => {});
+      chrome.storage.local.set({ lastPrice: price, lastPct: 0, lastDirection: direction });
+      chrome.runtime.sendMessage({ action: 'displayUpdate', price: price, pct: 0, direction: direction }).catch(() => {});
 
       if (activeTabId) {
         chrome.tabs.sendMessage(activeTabId, { action: 'setPrices', direction: direction, price: price }).catch(() => {});
       }
+      return price;
+
+    } else if (data.c == 0) {
+      logStatus(`Stock price returned 0, wrong or not supported symbol`);
+
+      return 0;
     } else {
       logStatus(`Stock price API error, data: ${ JSON.stringify(data) }`);
+
+      return false;
     }
   } catch (err) {
     logStatus(`Stock price API error: ${err.message}`);
@@ -201,27 +213,40 @@ async function processPageStart(tabId, pageUrl) {
   }
 
   const domain = getRootDomainName(pageUrl);
-  let foundSymbol = null;
+  let symbol = null;
+  let price = 0;
 
   if (domain) {
-    foundSymbol = await searchStockSymbol(domain, apiKey);
+    symbol = await searchStockSymbol(domain, apiKey);
   } else {
     logStatus('Standard domain name not detected.');
   }
 
-  setTrackedSymbol(foundSymbol);  // null safe
+  if (symbol) {
+    price = await checkPriceOnce(apiKey, tabId, symbol);
+  } else {
+    logStatus(`No valid symbol for domain: ${domain}`);
+  }
 
-  if (!foundSymbol) {
-    logStatus('Actions skipped: No valid symbol.');
+  if (!price) {
+    const { defaultSymbol } = await chrome.storage.sync.get(['defaultSymbol']);
+    
+    if (defaultSymbol) {
+      logStatus(`Default symbol found: ${defaultSymbol}`);
+      symbol = defaultSymbol;
+      price = await checkPriceOnce(apiKey, tabId, symbol);
+    }
+  }
+
+  setTrackedSymbol(symbol);
+
+  if (!price) {
     setWsState('disconnected');
+    emptyPrices();
     return;
   }
 
-  await checkPriceOnce(apiKey, tabId, foundSymbol);
-
-  const open = await checkMarket(apiKey, tabId);
-
-  if (open) {
+  if (await checkMarket(apiKey, tabId)) {
     connectWebSocket(apiKey, tabId, foundSymbol);
   }
 }
@@ -266,7 +291,7 @@ function connectWebSocket(apiKey, activeTabId, symbol) {
 
               lastStockPrice = newPrice;
 
-              chrome.storage.local.set({ lastPct: pct, lastDirection: direction });
+              chrome.storage.local.set({ lastPrice: newPrice, lastPct: pct, lastDirection: direction });
               chrome.runtime.sendMessage({ action: 'displayUpdate', price: newPrice, pct: pct, direction: direction }).catch(() => {});
 
               if (activeTabId) {

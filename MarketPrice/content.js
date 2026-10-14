@@ -1,6 +1,7 @@
 const PRICE_REGEX = /\$\s*(\d{1,3}(?:,\d{3})+|\d+)(?:\.\d{1,2})?/g;
 let observer = null;
 let locateActive = false;
+let followingPrice = false;
 
 // Notify background service worker when page starts
 chrome.runtime.sendMessage({ action: 'pageStarted' }).catch(() => {});
@@ -61,6 +62,7 @@ function ensurePricesWrapped(rootNode = document.body) {
       const span = document.createElement('span');
       span.className = 'highlighted-price-ext';
       span.textContent = matchText;
+      span.dataset.originalText = matchText;
 
       if (!isNaN(numVal)) {
         span.dataset.currentPrice = numVal.toString();
@@ -87,8 +89,9 @@ function ensurePricesWrapped(rootNode = document.body) {
 }
 
 function setLocateMode(enabled) {
+  if (!locateActive && enabled) ensurePricesWrapped();
+
   locateActive = enabled;
-  ensurePricesWrapped();
 
   const highlights = document.querySelectorAll('.highlighted-price-ext');
   highlights.forEach(span => {
@@ -102,9 +105,30 @@ function setLocateMode(enabled) {
   observeDynamicContent();
 }
 
+function setFollowPrice(follow) {
+  if (!followingPrice && follow) {  // turning on
+    ensurePricesWrapped();
+
+  } else if (followingPrice && !follow) {  // turning off
+
+    const highlights = document.querySelectorAll('.highlighted-price-ext');
+    highlights.forEach(span => {
+
+      span.textContent = span.dataset.originalText;
+      span.classList.remove('locate-yellow');
+      span.classList.remove('flash-up', 'flash-down');
+    });
+
+  }
+  followingPrice = follow;  // update variable
+
+  observeDynamicContent();
+}
+
 function adjustPrices(direction, percentage) {
   locateActive = false;
-  ensurePricesWrapped();
+
+  // ensurePricesWrapped();  // only search when setting locate and follow
 
   const factor = direction === 'up' ? (1 + percentage / 100) : (1 - percentage / 100);
   const flashClass = direction === 'up' ? 'flash-up' : 'flash-down';
@@ -145,8 +169,6 @@ function adjustPrices(direction, percentage) {
     setTimeout(() => {
       span.classList.remove(flashClass);
     }, 50);
-
-    scrollPage(direction, percentage);
   });
 }
 
@@ -201,7 +223,7 @@ function colorFlash(color) {
 
 function setPrices(direction, price) {
   locateActive = false;
-  ensurePricesWrapped();
+  // ensurePricesWrapped();  // only search when setting locate and follow
 
   const flashClass = direction === 'up' ? 'flash-up' : 'flash-down';
 
@@ -259,13 +281,20 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'toggleLocate') {
     setLocateMode(request.enabled);
     sendResponse({ status: 'done' });
+  } else if (request.action === 'toggleFollow') {
+    setFollowPrice(request.enabled);
+    sendResponse({ status: 'done' });
   } else if (request.action === 'adjustPrices') {
     adjustPrices(request.direction, request.percentage);
     colorFlash(request.direction);
+    scrollPage(request.direction, request.percentage);
     sendResponse({ status: 'done' });
   } else if (request.action === 'setPrices') {
-    setPrices(request.direction, request.price);
+    if (followingPrice) {
+      setPrices(request.direction, request.price);
+    }
     colorFlash(request.direction);
+    scrollPage(request.direction, request.percentage);
     sendResponse({ status: 'done' });
   }
 });

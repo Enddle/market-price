@@ -123,8 +123,11 @@ body {
 .colored.neutral { color: #6b7280; }
 
 .price-display.up { background-color: #22c55e; }
+.price-display.up:active { background-color: #16a34a; }
 .price-display.down { background-color: #ef4444; }
+.price-display.down:active { background-color: #dc2626; }
 .price-display.neutral { background-color: #888f9b; }
+.price-display.neutral:active { background-color: #6b7280; }
 
 .price-display.following:not(:hover) {
   background: none;
@@ -171,13 +174,7 @@ details[open] .section-title::after {
   background-color: transparent;
 }
 
-/* Settings Inputs */
-.input-group {
-  display: flex;
-  gap: 6px;
-  margin-bottom: 6px;
-  align-items: center;
-}
+/* Settings */
 
 .input-wrapper {
   position: relative;
@@ -252,22 +249,14 @@ details[open] .section-title::after {
   text-decoration: underline;
 }
 
-.status-label {
-  margin-top: 8px;
-  margin-bottom: 8px;
-}
-
-.tests-label {
-  margin-top: 4px;
-  margin-bottom: 0;
-}
-
-.status-label, 
-.tests-label {
+label.text {
   font-size: 12px;
   font-weight: 600;
   color: #4b5563;
   display: block;
+  margin-top: 4px;
+  margin-bottom: 4px;
+  user-select: none;
 }
 
 textarea#statusText {
@@ -289,6 +278,7 @@ textarea#statusText {
   display: flex;
   gap: 6px;
   margin-top: 8px;
+  user-select: none;
 }
 
 .btn-action {
@@ -367,4 +357,95 @@ textarea#statusText {
 
 .link-separator {
   color: #9ca3af;
+}
+
+/* underline input / toggle switch styles */
+.input-group,
+.toggle-group {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.input-group {
+  margin-top: 4px;
+  margin-bottom: 8px;
+}
+
+/* Underline style input */
+.underline-input {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #ccc;
+  border-radius: 0;
+  padding: 2px 4px;
+  text-align: right;
+  font-size: 14px;
+  width: 55px;
+  outline: none;
+  color: darkgray;
+  font-weight: 700;
+  transition: border-color 0.25s ease;
+}
+
+/* Focus state underline */
+.underline-input:focus {
+  color: black;
+  font-weight: 500;
+  border-bottom-color: #2563eb; 
+}
+.underline-input.saved { 
+  color: #16a34a;
+  font-weight: 700;
+  border-bottom-color: #22c55e; 
+}
+
+label[for] { cursor: pointer; }
+
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 34px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background-color: #ccc;
+  transition: background-color 0.25s ease;
+  border-radius: 18px;
+}
+
+.slider::before {
+  position: absolute;
+  content: "";
+  height: 14px;
+  width: 14px;
+  left: 2px;
+  bottom: 2px;
+  background-color: #ffffff;
+  transition: transform 0.25s ease;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.switch input:checked + .slider { background-color: #22c55e; }
+.switch input.loading:checked + .slider { background-color: #2563eb; }
+
+/* Checked state: move knob (34px total - 14px knob - 4px padding = 16px translate) */
+.switch input:checked + .slider::before { transform: translateX(16px); }
+
+/* Focus indicator for keyboard navigation */
+.switch input:focus-visible + .slider {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
 }
