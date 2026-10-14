@@ -5,6 +5,33 @@ let statusLogs = [];
 
 importScripts('domainMap.js');
 
+const ICON_SETS = {
+  grey: {
+    16:  'icons/icon_16.png',
+    32:  'icons/icon_32.png',
+    48:  'icons/icon_48.png',
+    128: 'icons/icon_128.png'
+  },
+  blue: {
+    16:  'icons/icon-blue_16.png',
+    32:  'icons/icon-blue_32.png',
+    48:  'icons/icon-blue_48.png',
+    128: 'icons/icon-blue_128.png'
+  },
+  green: {
+    16:  'icons/icon-green_16.png',
+    32:  'icons/icon-green_32.png',
+    48:  'icons/icon-green_48.png',
+    128: 'icons/icon-green_128.png'
+  },
+  red: {
+    16:  'icons/icon-red_16.png',
+    32:  'icons/icon-red_32.png',
+    48:  'icons/icon-red_48.png',
+    128: 'icons/icon-red_128.png'
+  }
+};
+
 function getRootDomainName(urlStr) {
   if (!urlStr) return '';
   if (urlStr.startsWith('chrome://') || urlStr.startsWith('chrome-extension://')) {
@@ -26,39 +53,15 @@ function getRootDomainName(urlStr) {
   }
 }
 
-function setExtensionIcon(color, tabId) {
-  try {
-    const canvas = new OffscreenCanvas(32, 32);
-    const ctx = canvas.getContext('2d');
+async function setExtensionIcon(color, tabId) {
+  const icons = ICON_SETS[color];
+  if (!icons) return;
+  if (!tabId) return;
 
-    const colorMap = {
-      'grey': '#6b7280',
-      'blue': '#2563eb',
-      'green': '#22c55e'
-    };
-
-    ctx.beginPath();
-    ctx.arc(16, 16, 14, 0, 2 * Math.PI);
-    ctx.fillStyle = colorMap[color] || colorMap['grey'];
-    ctx.fill();
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = '#ffffff';
-    ctx.stroke();
-
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 18px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('$', 16, 17);
-
-    const imageData = ctx.getImageData(0, 0, 32, 32);
-    const options = { imageData: imageData };
-    if (tabId) options.tabId = tabId;
-
-    chrome.action.setIcon(options);
-  } catch (e) {
-    console.error('Error rendering icon:', e);
-  }
+  await chrome.action.setIcon({
+    tabId: tabId,
+    path: icons
+  }).catch(() => {});
 }
 
 function logStatus(message) {
@@ -190,18 +193,19 @@ async function checkPriceOnce(apiKey, activeTabId, symbol) {
       return 0;
     } else {
       logStatus(`Stock price API error, data: ${ JSON.stringify(data) }`);
-
+      setExtensionIcon('red', tabId);
       return false;
     }
   } catch (err) {
     logStatus(`Stock price API error: ${err.message}`);
-
+    setExtensionIcon('red', tabId);
     return false;
   }
 }
 
 async function processPageStart(tabId, pageUrl) {
-  setExtensionIcon('grey', tabId);
+  logStatus(`[Debug] tab id: ${tabId}`);
+  if (!tabId) return;
 
   const { apiKey } = await chrome.storage.sync.get(['apiKey']);
   if (!apiKey) {
@@ -209,6 +213,7 @@ async function processPageStart(tabId, pageUrl) {
     setTrackedSymbol('–––');
     setMarketState('closed');
     setWsState('disconnected');
+    setExtensionIcon('red', tabId);
     return;
   }
 
@@ -241,6 +246,7 @@ async function processPageStart(tabId, pageUrl) {
   setTrackedSymbol(symbol);
 
   if (!price) {
+    setExtensionIcon('grey', tabId);
     setWsState('disconnected');
     emptyPrices();
     return;

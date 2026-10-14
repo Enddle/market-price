@@ -186,7 +186,7 @@ details[open] .section-title::after {
 .input-wrapper input[type="text"],
 .input-wrapper input[type="password"] {
   width: 100%;
-  padding: 6px 28px 6px 6px;
+  padding: 4px 24px 4px 6px;
   border: 1px solid #d1d5db;
   border-radius: 4px;
   font-size: 13px;
@@ -216,6 +216,7 @@ details[open] .section-title::after {
   border: none;
   cursor: pointer;
   padding: 4px;
+  margin-right: -4px;
   display: flex;
   align-items: center;
   justify-content: center;
