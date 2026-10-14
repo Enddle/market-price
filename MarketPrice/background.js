@@ -204,7 +204,6 @@ async function checkPriceOnce(apiKey, activeTabId, symbol) {
 }
 
 async function processPageStart(tabId, pageUrl) {
-  logStatus(`[Debug] tab id: ${tabId}`);
   if (!tabId) return;
 
   const { apiKey } = await chrome.storage.sync.get(['apiKey']);
@@ -335,6 +334,8 @@ function closeWebSocket() {
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'pageStarted') {
+    // logStatus(`[Debug] Initialized from tab: ${sender.tab.url} (${sender.tab.id})`);
+
     const tabId = sender.tab ? sender.tab.id : null;
     const pageUrl = sender.tab ? sender.tab.url : '';
     processPageStart(tabId, pageUrl);
