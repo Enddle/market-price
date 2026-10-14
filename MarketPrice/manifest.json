@@ -23,8 +23,7 @@
   },
   "host_permissions": [
     "https://finnhub.io/*",
-    "wss://ws.finnhub.io/*",
-    "<all_urls>"
+    "wss://ws.finnhub.io/*"
   ],
   "permissions": ["storage", "activeTab", "tabs"],
   "content_scripts": [
