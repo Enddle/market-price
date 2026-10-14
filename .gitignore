@@ -1,4 +1,7 @@
 .DS_Store
 *.crx
 *.pem
-icon.ai
+*.zip
+
+*.ai
+*.psd
