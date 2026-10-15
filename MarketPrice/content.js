@@ -1,8 +1,9 @@
 const PRICE_REGEX = /\$\s*(\d{1,3}(?:,\d{3})+|\d+)(?:\.\d{1,2})?/g;
 let observer = null;
-let locateActive = false;
+
+let isLocateActive = false;
+let isFollowingPrice = false;
 let lastPrice = 0;
-let followingPrice = false;
 
 // Notify background service worker when page starts
 chrome.runtime.sendMessage({ action: 'pageStarted' }).catch(() => {});
@@ -72,7 +73,7 @@ function ensurePricesWrapped(rootNode = document.body) {
         span.dataset.hasCommas = hasCommas ? 'true' : 'false';
       }
 
-      if (followingPrice && lastPrice != 0) {
+      if (isFollowingPrice && lastPrice != 0) {
         nodeSetPrice(span, lastPrice);
       }
 
@@ -96,22 +97,22 @@ function setLocateMode(locate) {
     if (locate) span.classList.add('locate-yellow');
     else span.classList.remove('locate-yellow');
   });
-  locateActive = locate;
+  isLocateActive = locate;
 }
 
 function setFollowPrice(follow) {
 
-  if (!followingPrice && follow) {  // turning on
+  if (!isFollowingPrice && follow) {  // turning on
     const highlights = document.querySelectorAll('.highlighted-price-ext');
     highlights.forEach(span => {
-      if (followingPrice && lastPrice != 0) {
+      if (follow && lastPrice != 0) {  // isFollowingPrice not updated yet, use follow
         nodeSetPrice(span, lastPrice);
       } else {
         const text = span.dataset.currentText;
         if (text) span.textContent = text;
       }
     });
-  } else if (followingPrice && !follow) {  // turning off
+  } else if (isFollowingPrice && !follow) {  // turning off
     const highlights = document.querySelectorAll('.highlighted-price-ext');
     highlights.forEach(span => {
 
@@ -121,11 +122,11 @@ function setFollowPrice(follow) {
       span.classList.remove('flash-up', 'flash-down');
     });
   }
-  followingPrice = follow;  // update variable
+  isFollowingPrice = follow;  // update variable
 }
 
 function adjustPrices(pct, direction) {
-  locateActive = false;
+  isLocateActive = false;
 
   const factor = direction === 'up' ? (1 + pct / 100) : (1 - pct / 100);
   const flashClass = direction === 'up' ? 'flash-up' : 'flash-down';
@@ -152,7 +153,7 @@ function adjustPrices(pct, direction) {
 }
 
 function setPrices(price, direction) {
-  locateActive = false;
+  isLocateActive = false;
 
   const flashClass = direction === 'up' ? 'flash-up' : 'flash-down';
 
@@ -257,12 +258,12 @@ function observeDynamicContent() {
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
   if (request.action === 'toggleLocate') {
-    if (!locateActive && request.locate) ensurePricesWrapped();
+    if (!isLocateActive && request.locate) ensurePricesWrapped();
     setLocateMode(request.locate);
     sendResponse({ status: 'done' });
 
   } else if (request.action === 'toggleFollow') {
-    if (!followingPrice && request.follow) ensurePricesWrapped();
+    if (!isFollowingPrice && request.follow) ensurePricesWrapped();
     setFollowPrice(request.follow);
     sendResponse({ status: 'done' });
 
@@ -276,10 +277,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
   } else if (request.action === 'setPrices') {
     lastPrice = request.price;
-    if (followingPrice && request.price) {
+    console.log(`[Market Price] price received: ${lastPrice}`);
+    if (isFollowingPrice && request.price) {
       setPrices(request.price, request.direction);
     }
-    // if (request.pct || (followingPrice && request.price)) {
+    // if (request.pct || (isFollowingPrice && request.price)) {
     if (request.pct) {
       flashPage(request.direction);
       scrollPage(request.pct, request.direction);

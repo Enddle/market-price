@@ -242,12 +242,15 @@ document.addEventListener('DOMContentLoaded', () => {
       setLocateState(false);
     }
 
-    if (!isFollowingPrice) toggleFollowPrice(true);
+    if (!isFollowingPrice) toggleFollowPrice(true);  // triggers content to link with lastPrice
 
     const pct = getRandomPercentage();
-
+    // const factor = direction === 'up' ? (1 + pct / 100) : (1 - pct / 100);
+    // const price = lastPrice * factor;
+    // updateDisplays(price, pct, direction);  // have a small offset, could fully switch to setPrices instead
     updateDisplays(0, pct, direction);
     chrome.storage.local.set({ lastPct: pct, lastDirection: direction });
+    // chrome.storage.local.set({ lastPrice: price, lastPct: pct, lastDirection: direction });  // do not store tests
 
     sendMessageToTab({ action: 'adjustPrices', direction: direction, pct: pct });
   }
