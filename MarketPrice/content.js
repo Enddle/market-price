@@ -1,6 +1,7 @@
 const PRICE_REGEX = /\$\s*(\d{1,3}(?:,\d{3})+|\d+)(?:\.\d{1,2})?/g;
 let observer = null;
 let locateActive = false;
+let lastPrice = 0;
 let followingPrice = false;
 
 // Notify background service worker when page starts
@@ -63,6 +64,7 @@ function ensurePricesWrapped(rootNode = document.body) {
       span.className = 'highlighted-price-ext';
       span.textContent = matchText;
       span.dataset.originalText = matchText;
+      span.dataset.currentText = matchText;
 
       if (!isNaN(numVal)) {
         span.dataset.currentPrice = numVal.toString();
@@ -70,8 +72,8 @@ function ensurePricesWrapped(rootNode = document.body) {
         span.dataset.hasCommas = hasCommas ? 'true' : 'false';
       }
 
-      if (locateActive) {
-        span.classList.add('locate-yellow');
+      if (followingPrice && lastPrice != 0) {
+        nodeSetPrice(span, lastPrice);
       }
 
       fragment.appendChild(span);
@@ -88,49 +90,44 @@ function ensurePricesWrapped(rootNode = document.body) {
   });
 }
 
-function setLocateMode(enabled) {
-  if (!locateActive && enabled) ensurePricesWrapped();
-
-  locateActive = enabled;
-
+function setLocateMode(locate) {
   const highlights = document.querySelectorAll('.highlighted-price-ext');
   highlights.forEach(span => {
-    if (enabled) {
-      span.classList.add('locate-yellow');
-    } else {
-      span.classList.remove('locate-yellow');
-    }
+    if (locate) span.classList.add('locate-yellow');
+    else span.classList.remove('locate-yellow');
   });
-
-  observeDynamicContent();
+  locateActive = locate;
 }
 
 function setFollowPrice(follow) {
+
   if (!followingPrice && follow) {  // turning on
-    ensurePricesWrapped();
-
+    const highlights = document.querySelectorAll('.highlighted-price-ext');
+    highlights.forEach(span => {
+      if (followingPrice && lastPrice != 0) {
+        nodeSetPrice(span, lastPrice);
+      } else {
+        const text = span.dataset.currentText;
+        if (text) span.textContent = text;
+      }
+    });
   } else if (followingPrice && !follow) {  // turning off
-
     const highlights = document.querySelectorAll('.highlighted-price-ext');
     highlights.forEach(span => {
 
-      span.textContent = span.dataset.originalText;
+      const text = span.dataset.originalText;
+      if (text) span.textContent = text;
       span.classList.remove('locate-yellow');
       span.classList.remove('flash-up', 'flash-down');
     });
-
   }
   followingPrice = follow;  // update variable
-
-  observeDynamicContent();
 }
 
-function adjustPrices(direction, percentage) {
+function adjustPrices(pct, direction) {
   locateActive = false;
 
-  // ensurePricesWrapped();  // only search when setting locate and follow
-
-  const factor = direction === 'up' ? (1 + percentage / 100) : (1 - percentage / 100);
+  const factor = direction === 'up' ? (1 + pct / 100) : (1 - pct / 100);
   const flashClass = direction === 'up' ? 'flash-up' : 'flash-down';
 
   const highlights = document.querySelectorAll('.highlighted-price-ext');
@@ -139,64 +136,64 @@ function adjustPrices(direction, percentage) {
     span.classList.remove('locate-yellow');
 
     let currentVal = parseFloat(span.dataset.currentPrice);
-    if (isNaN(currentVal)) {
+
+    if (isNaN(currentVal)) {  // if parse failed, retry parse
       const cleanNum = span.textContent.replace(/[^0-9.]/g, '');
       currentVal = parseFloat(cleanNum);
       span.dataset.prefix = span.textContent.match(/^\$\s*/)?.[0] || '$';
       span.dataset.hasCommas = span.textContent.includes(',') ? 'true' : 'false';
     }
+    if (isNaN(currentVal)) return;  // still error
 
-    if (!isNaN(currentVal)) {
-      const newVal = currentVal * factor;
-      span.dataset.currentPrice = newVal.toString();
-
-      const prefix = span.dataset.prefix || '$';
-      const hasCommas = span.dataset.hasCommas === 'true';
-
-      const formattedNum = hasCommas 
-        ? newVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-        : newVal.toFixed(2);
-
-      span.textContent = `${prefix}${formattedNum}`;
-    }
-
-    // Trigger green/red flash and fade out transition
-    span.classList.remove('flash-up', 'flash-down');
-    void span.offsetWidth; // Repaint trigger
-
-    span.classList.add(flashClass);
-
-    setTimeout(() => {
-      span.classList.remove(flashClass);
-    }, 50);
+    const newVal = currentVal * factor;
+    nodeSetPrice(span, newVal);
+    nodeFlash(span, flashClass);
   });
 }
 
-function scrollPage(direction, percentage) {
-  const height = document.documentElement.scrollHeight;
-  const distance = height * percentage / 100;
+function setPrices(price, direction) {
+  locateActive = false;
 
-  const delta = direction === 'down' ? distance : -distance;
-  const top = (window.scrollY === 0) && (delta < 0);
-  const bottom = (window.innerHeight + window.scrollY >= height - 1) && (delta > 0);
-  
-  if (top || bottom) {  // if top / bottom scroll beyond page
-    const scrollPromise = (top) => new Promise((resolve) => {
-      window.addEventListener('scrollend', resolve, { once: true });
-      window.scrollBy({ top, behavior: 'smooth' });
-    });
-    
-    scrollPromise(-delta).then(() => window.scrollBy({ top: delta, behavior: 'smooth' }));
-  } else {
-    window.scrollBy({ top: delta, behavior: 'smooth' });
-  }
+  const flashClass = direction === 'up' ? 'flash-up' : 'flash-down';
+
+  const highlights = document.querySelectorAll('.highlighted-price-ext');
+
+  highlights.forEach(span => {
+    span.classList.remove('locate-yellow');
+    nodeSetPrice(span, price);
+    nodeFlash(span, flashClass);
+  });
+}
+
+function nodeSetPrice(span, price) {
+  span.dataset.currentPrice = price.toString;
+
+  const prefix = span.dataset.prefix || '$';
+  const hasCommas = span.dataset.hasCommas === 'true';
+  const formattedNum = hasCommas 
+    ? price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : price.toFixed(2);
+  span.textContent = `${prefix}${formattedNum}`;
+  span.dataset.currentText = `${prefix}${formattedNum}`;
+}
+
+function nodeFlash(span, flashClass) {
+
+  span.classList.remove('flash-up', 'flash-down');
+  void span.offsetWidth; // Repaint trigger
+
+  span.classList.add(flashClass);
+
+  setTimeout(() => {
+    span.classList.remove(flashClass);
+  }, 50);
 }
 
 function colorFilterSvg(matrix) {
   return `url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg'><filter id='f'><feColorMatrix type='matrix' values='${matrix}'/></filter></svg>#f\")`;
 }
 
-function colorFlash(color) {
+function flashPage(color) {
   if (color === 'up') {  // green
     setTimeout(() => document.body.style.filter = colorFilterSvg('0.75 0 0 0 0 0.05 0.93 0.02 0 0 0 0 0.75 0 0 0 0 0 1 0'), 25);
     setTimeout(() => document.body.style.filter = colorFilterSvg('0.50 0 0 0 0 0.11 0.86 0.04 0 0 0 0 0.50 0 0 0 0 0 1 0'), 50);
@@ -221,44 +218,24 @@ function colorFlash(color) {
   }
 }
 
-function setPrices(direction, price) {
-  locateActive = false;
-  // ensurePricesWrapped();  // only search when setting locate and follow
+function scrollPage(pct, direction) {
+  const height = document.documentElement.scrollHeight;
+  const distance = height * pct / 100;
 
-  const flashClass = direction === 'up' ? 'flash-up' : 'flash-down';
-
-  const highlights = document.querySelectorAll('.highlighted-price-ext');
-
-  highlights.forEach(span => {
-    span.classList.remove('locate-yellow');
-
-    let currentVal = parseFloat(span.dataset.currentPrice);
-    if (isNaN(currentVal)) {
-      // currentVal = parseFloat(span.textContent.replace(/[^0-9.]/g, ''));
-      span.dataset.prefix = span.textContent.match(/^\$\s*/)?.[0] || '$';
-      span.dataset.hasCommas = span.textContent.includes(',') ? 'true' : 'false';
-    }
-
-    const prefix = span.dataset.prefix || '$';
-    const hasCommas = span.dataset.hasCommas === 'true';
-
-    const formattedNum = hasCommas 
-      ? price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-      : price.toFixed(2);
+  const delta = direction === 'down' ? distance : -distance;
+  const top = (window.scrollY === 0) && (delta < 0);
+  const bottom = (window.innerHeight + window.scrollY >= height - 1) && (delta > 0);
+  
+  if (top || bottom) {  // if top / bottom scroll beyond page
+    const scrollPromise = (top) => new Promise((resolve) => {
+      window.addEventListener('scrollend', resolve, { once: true });
+      window.scrollBy({ top, behavior: 'smooth' });
+    });
     
-    span.textContent = `${prefix}${formattedNum}`;
-    span.dataset.currentPrice = price;
-
-    // Trigger green/red flash and fade out transition
-    span.classList.remove('flash-up', 'flash-down');
-    void span.offsetWidth; // Repaint trigger
-
-    span.classList.add(flashClass);
-
-    setTimeout(() => {
-      span.classList.remove(flashClass);
-    }, 50);
-  });
+    scrollPromise(-delta).then(() => window.scrollBy({ top: delta, behavior: 'smooth' }));
+  } else {
+    window.scrollBy({ top: delta, behavior: 'smooth' });
+  }
 }
 
 function observeDynamicContent() {
@@ -278,34 +255,45 @@ function observeDynamicContent() {
 
 // Listen for popup & background messages
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+
   if (request.action === 'toggleLocate') {
-    setLocateMode(request.enabled);
+    if (!locateActive && request.locate) ensurePricesWrapped();
+    setLocateMode(request.locate);
     sendResponse({ status: 'done' });
+
   } else if (request.action === 'toggleFollow') {
-    setFollowPrice(request.enabled);
+    if (!followingPrice && request.follow) ensurePricesWrapped();
+    setFollowPrice(request.follow);
     sendResponse({ status: 'done' });
+
   } else if (request.action === 'adjustPrices') {
-    if (request.percentage) {
-      adjustPrices(request.direction, request.percentage);
-      colorFlash(request.direction);
-      scrollPage(request.direction, request.percentage);
+    if (request.pct) {
+      adjustPrices(request.pct, request.direction);
+      flashPage(request.direction);
+      scrollPage(request.pct, request.direction);
     }
     sendResponse({ status: 'done' });
+
   } else if (request.action === 'setPrices') {
-    if (followingPrice) {
-      setPrices(request.direction, request.price);
+    lastPrice = request.price;
+    if (followingPrice && request.price) {
+      setPrices(request.price, request.direction);
     }
-    if (request.percentage || (followingPrice && request.price)) {
-      colorFlash(request.direction);
-      scrollPage(request.direction, request.percentage);
+    // if (request.pct || (followingPrice && request.price)) {
+    if (request.pct) {
+      flashPage(request.direction);
+      scrollPage(request.pct, request.direction);
     }
     sendResponse({ status: 'done' });
   }
 });
 
 // Restore locate state if saved
-chrome.storage.sync.get(['locateActive'], (result) => {
-  if (result.locateActive) {
-    setLocateMode(true);
+chrome.storage.sync.get(['locateActive', 'alwaysFollow'], (data) => {
+  if (data.locateActive || data.alwaysFollow) {
+    ensurePricesWrapped();
+    observeDynamicContent();
   }
+  setLocateMode(data.locateActive);
+  setFollowPrice(data.alwaysFollow);
 });

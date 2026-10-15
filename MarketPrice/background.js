@@ -32,27 +32,6 @@ const ICON_SETS = {
   }
 };
 
-function getRootDomainName(urlStr) {
-  if (!urlStr) return '';
-  if (urlStr.startsWith('chrome://') || urlStr.startsWith('chrome-extension://')) {
-    return 'chrome';
-  }
-  try {
-    const url = new URL(urlStr);
-    let host = url.hostname.toLowerCase().replace(/^www\./, '');
-    const parts = host.split('.');
-    if (parts.length === 1) return parts[0];
-
-    const commonSlds = ['co', 'com', 'org', 'net', 'gov', 'edu'];
-    if (parts.length >= 3 && commonSlds.includes(parts[parts.length - 2])) {
-      return parts[parts.length - 3];
-    }
-    return parts[parts.length - 2];
-  } catch (e) {
-    return '';
-  }
-}
-
 async function setExtensionIcon(color, tabId) {
   const icons = ICON_SETS[color];
   if (!icons) return;
@@ -97,6 +76,27 @@ function setTrackedSymbol(symbol) {
 function emptyPrices() {
   chrome.storage.local.set({ lastPrice: 0, lastPct: 0, lastDirection: 'neutral' });
   chrome.runtime.sendMessage({ action: 'displayUpdate', price: 0, pct: 0, direction: 'neutral' }).catch(() => {});
+}
+
+function getRootDomainName(urlStr) {
+  if (!urlStr) return '';
+  if (urlStr.startsWith('chrome://') || urlStr.startsWith('chrome-extension://')) {
+    return 'chrome';
+  }
+  try {
+    const url = new URL(urlStr);
+    let host = url.hostname.toLowerCase().replace(/^www\./, '');
+    const parts = host.split('.');
+    if (parts.length === 1) return parts[0];
+
+    const commonSlds = ['co', 'com', 'org', 'net', 'gov', 'edu'];
+    if (parts.length >= 3 && commonSlds.includes(parts[parts.length - 2])) {
+      return parts[parts.length - 3];
+    }
+    return parts[parts.length - 2];
+  } catch (e) {
+    return '';
+  }
 }
 
 async function searchStockSymbol(domain, apiKey) {
@@ -164,7 +164,7 @@ async function checkMarket(apiKey, tabId) {
   }
 }
 
-async function checkPriceOnce(apiKey, activeTabId, symbol) {
+async function checkPriceOnce(apiKey, tabId, symbol) {
   logStatus('Checking current stock price: ' + symbol);
   try {
     const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${apiKey}`);
@@ -182,8 +182,8 @@ async function checkPriceOnce(apiKey, activeTabId, symbol) {
       chrome.storage.local.set({ lastPrice: price, lastPct: 0, lastDirection: direction });
       chrome.runtime.sendMessage({ action: 'displayUpdate', price: price, pct: 0, direction: direction }).catch(() => {});
 
-      if (activeTabId) {
-        chrome.tabs.sendMessage(activeTabId, { action: 'setPrices', direction: direction, price: price }).catch(() => {});
+      if (tabId) {
+        chrome.tabs.sendMessage(tabId, { action: 'setPrices', direction: direction, price: price }).catch(() => {});
       }
       return price;
 
@@ -203,8 +203,83 @@ async function checkPriceOnce(apiKey, activeTabId, symbol) {
   }
 }
 
+function connectWebSocket(apiKey, tabId, symbol) {
+  if (socket && socket.readyState === WebSocket.OPEN) {
+    logStatus(`Subscribing to trade stream for '${symbol}'...`);
+    socket.send(JSON.stringify({ type: 'subscribe', symbol: symbol }));
+    setWsState('subscribed');
+    return;
+  }
+
+  logStatus('Connecting to Finnhub WebSocket...');
+  socket = new WebSocket(`wss://ws.finnhub.io?token=${apiKey}`);
+
+  socket.onopen = () => {
+    logStatus(`WebSocket Connected. Subscribing to '${symbol}'...`);
+    socket.send(JSON.stringify({ type: 'subscribe', symbol: symbol }));
+    setWsState('subscribed');
+  };
+
+  socket.onmessage = (event) => {
+    try {
+      const msg = JSON.parse(event.data);
+      if (msg.type === 'trade' && Array.isArray(msg.data)) {
+        msg.data.forEach(trade => {
+          if (trade.s === currentSymbol) {
+            const newPrice = trade.p;
+
+            setExtensionIcon('green', tabId);
+            setWsState('active'); // Message received state
+
+            if (lastStockPrice === null) {
+              lastStockPrice = newPrice;
+              logStatus(`[WS ${currentSymbol}] Baseline Price: $${newPrice.toFixed(2)}`);
+            } else if (newPrice !== lastStockPrice) {
+              const diff = newPrice - lastStockPrice;
+              const pct = Math.abs((diff / lastStockPrice) * 100);
+              const direction = diff > 0 ? 'up' : 'down';
+
+              logStatus(`[WS ${currentSymbol}] $${newPrice.toFixed(2)} (${direction === 'up' ? '+' : '-'}${pct.toFixed(4)}%)`);
+
+              lastStockPrice = newPrice;
+
+              chrome.storage.local.set({ lastPrice: newPrice, lastPct: pct, lastDirection: direction });
+              chrome.runtime.sendMessage({ action: 'displayUpdate', price: newPrice, pct: pct, direction: direction }).catch(() => {});
+
+              if (tabId) {
+                // chrome.tabs.sendMessage(tabId, { action: 'adjustPrices', direction: direction, pct: pct }).catch(() => {});
+                chrome.tabs.sendMessage(tabId, { action: 'setPrices', direction: direction, price: newPrice }).catch(() => {});
+              }
+            }
+          }
+        });
+      }
+    } catch (e) {
+      console.error('WS parse error:', e);
+    }
+  };
+
+  socket.onerror = () => {
+    logStatus('WebSocket encountered an error.');
+    setWsState('disconnected');
+  };
+
+  socket.onclose = () => {
+    logStatus('WebSocket disconnected.');
+    setWsState('disconnected');
+  };
+}
+
+function closeWebSocket() {
+  if (socket) {
+    socket.close();
+    socket = null;
+  }
+  lastStockPrice = null;
+  setWsState('disconnected');
+}
+
 async function processPageStart(tabId, pageUrl) {
-  if (!tabId) return;
 
   const { apiKey } = await chrome.storage.sync.get(['apiKey']);
   if (!apiKey) {
@@ -252,84 +327,8 @@ async function processPageStart(tabId, pageUrl) {
   }
 
   if (await checkMarket(apiKey, tabId)) {
-    connectWebSocket(apiKey, tabId, foundSymbol);
+    connectWebSocket(apiKey, tabId, symbol);
   }
-}
-
-function connectWebSocket(apiKey, activeTabId, symbol) {
-  if (socket && socket.readyState === WebSocket.OPEN) {
-    logStatus(`Subscribing to trade stream for '${symbol}'...`);
-    socket.send(JSON.stringify({ type: 'subscribe', symbol: symbol }));
-    setWsState('subscribed');
-    return;
-  }
-
-  logStatus('Connecting to Finnhub WebSocket...');
-  socket = new WebSocket(`wss://ws.finnhub.io?token=${apiKey}`);
-
-  socket.onopen = () => {
-    logStatus(`WebSocket Connected. Subscribing to '${symbol}'...`);
-    socket.send(JSON.stringify({ type: 'subscribe', symbol: symbol }));
-    setWsState('subscribed');
-  };
-
-  socket.onmessage = (event) => {
-    try {
-      const msg = JSON.parse(event.data);
-      if (msg.type === 'trade' && Array.isArray(msg.data)) {
-        msg.data.forEach(trade => {
-          if (trade.s === currentSymbol) {
-            const newPrice = trade.p;
-
-            setExtensionIcon('green', activeTabId);
-            setWsState('active'); // Message received state
-
-            if (lastStockPrice === null) {
-              lastStockPrice = newPrice;
-              logStatus(`[WS ${currentSymbol}] Baseline Price: $${newPrice.toFixed(2)}`);
-            } else if (newPrice !== lastStockPrice) {
-              const diff = newPrice - lastStockPrice;
-              const pct = Math.abs((diff / lastStockPrice) * 100);
-              const direction = diff > 0 ? 'up' : 'down';
-
-              logStatus(`[WS ${currentSymbol}] $${newPrice.toFixed(2)} (${direction === 'up' ? '+' : '-'}${pct.toFixed(4)}%)`);
-
-              lastStockPrice = newPrice;
-
-              chrome.storage.local.set({ lastPrice: newPrice, lastPct: pct, lastDirection: direction });
-              chrome.runtime.sendMessage({ action: 'displayUpdate', price: newPrice, pct: pct, direction: direction }).catch(() => {});
-
-              if (activeTabId) {
-                // chrome.tabs.sendMessage(activeTabId, { action: 'adjustPrices', direction: direction, percentage: pct }).catch(() => {});
-                chrome.tabs.sendMessage(activeTabId, { action: 'setPrices', direction: direction, price: newPrice }).catch(() => {});
-              }
-            }
-          }
-        });
-      }
-    } catch (e) {
-      console.error('WS parse error:', e);
-    }
-  };
-
-  socket.onerror = () => {
-    logStatus('WebSocket encountered an error.');
-    setWsState('disconnected');
-  };
-
-  socket.onclose = () => {
-    logStatus('WebSocket disconnected.');
-    setWsState('disconnected');
-  };
-}
-
-function closeWebSocket() {
-  if (socket) {
-    socket.close();
-    socket = null;
-  }
-  lastStockPrice = null;
-  setWsState('disconnected');
 }
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
