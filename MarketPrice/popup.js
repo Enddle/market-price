@@ -46,11 +46,10 @@ document.addEventListener('DOMContentLoaded', () => {
   );
 
   // Load saved API key & set default section folding state
-  chrome.storage.sync.get(['apiKey', 'locateActive', 'alwaysFollow', 'defaultSymbol'], (data) => {
+  chrome.storage.sync.get(['apiKey', 'alwaysFollow', 'defaultSymbol'], (data) => {
     updateApiKey(data.apiKey);
     updateAlwaysFollow(data.alwaysFollow);
     updateDefaultSymbol(data.defaultSymbol);
-    setLocateState(data.locateActive);
   });
 
   function updateSymbolDisplay(symbol) {
@@ -231,7 +230,6 @@ document.addEventListener('DOMContentLoaded', () => {
   btnLocate.addEventListener('click', () => {
     const newState = !isLocateActive;
     setLocateState(newState);
-    chrome.storage.sync.set({ locateActive: newState });
     sendMessageToTab({ action: 'toggleLocate', locate: newState });
   });
 
@@ -242,7 +240,6 @@ document.addEventListener('DOMContentLoaded', () => {
   function handleManualTest(direction) {
     if (isLocateActive) {
       setLocateState(false);
-      chrome.storage.sync.set({ locateActive: false });
     }
 
     if (!isFollowingPrice) toggleFollowPrice(true);

@@ -289,11 +289,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 });
 
 // Restore locate state if saved
-chrome.storage.sync.get(['locateActive', 'alwaysFollow'], (data) => {
-  if (data.locateActive || data.alwaysFollow) {
+chrome.storage.sync.get(['alwaysFollow'], (data) => {
+  if (data.alwaysFollow) {
     ensurePricesWrapped();
     observeDynamicContent();
   }
-  setLocateMode(data.locateActive);
   setFollowPrice(data.alwaysFollow);
 });
