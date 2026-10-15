@@ -1,7 +1,8 @@
 let socket = null;
-let currentSymbol = null;
-let lastStockPrice = null;
+let socketSymbol = null;
+let socketLastPrice = null;
 let statusLogs = [];
+let currentTabId = null;
 
 importScripts('domainMap.js');
 
@@ -32,15 +33,13 @@ const ICON_SETS = {
   }
 };
 
-async function setExtensionIcon(color, tabId) {
+async function setExtensionIcon(color) {
   const icons = ICON_SETS[color];
   if (!icons) return;
-  if (!tabId) return;
-
   try {
-    await chrome.action.setIcon({ tabId: tabId, path: icons });
+    await chrome.action.setIcon({ tabId: currentTabId, path: icons });
   } catch (error) {
-    await chrome.action.setIcon({ path: ICON_SETS['red'] });  // global red when tabId error
+    await chrome.action.setIcon({ path: icons });
   }
 }
 
@@ -67,8 +66,6 @@ function setWsState(state) {
 }
 
 function setTrackedSymbol(symbol) {
-  currentSymbol = symbol;
-  lastStockPrice = null;
   const displaySymbol = symbol || '–––';
   chrome.storage.local.set({ trackedSymbol: displaySymbol });
   chrome.runtime.sendMessage({ action: 'symbolUpdate', symbol: displaySymbol }).catch(() => {});
@@ -80,7 +77,7 @@ function emptyPrices() {
 }
 
 function getRootDomainName(urlStr) {
-  if (!urlStr) return '';
+  if (!urlStr) return false;
   if (urlStr.startsWith('chrome://') || urlStr.startsWith('chrome-extension://')) {
     return 'chrome';
   }
@@ -96,7 +93,7 @@ function getRootDomainName(urlStr) {
     }
     return parts[parts.length - 2];
   } catch (e) {
-    return '';
+    return false;
   }
 }
 
@@ -131,7 +128,7 @@ async function searchStockSymbol(domain, apiKey) {
   }
 }
 
-async function checkMarket(apiKey, tabId) {
+async function checkMarket(apiKey) {
   logStatus('Checking US market status...');
   try {
     const res = await fetch(`https://finnhub.io/api/v1/stock/market-status?exchange=US&token=${apiKey}`);
@@ -141,7 +138,7 @@ async function checkMarket(apiKey, tabId) {
 
     if (data && data.isOpen) {
       logStatus('Market is OPEN. Icon set to Blue.');
-      setExtensionIcon('blue', tabId);
+      setExtensionIcon('blue');
       setMarketState('open');
 
       return true;
@@ -149,7 +146,7 @@ async function checkMarket(apiKey, tabId) {
     } else {
       const session = data?.session ? ` (${data.session})` : '';
       logStatus(`Market is CLOSED${session}. Icon remains Grey.`);
-      setExtensionIcon('grey', tabId);
+      setExtensionIcon('grey');
       setMarketState('closed');
       closeWebSocket();
 
@@ -157,7 +154,7 @@ async function checkMarket(apiKey, tabId) {
     }
   } catch (err) {
     logStatus(`Market status API error: ${err.message}`);
-    setExtensionIcon('grey', tabId);
+    setExtensionIcon('grey');
     setMarketState('closed');
     setWsState('disconnected');
 
@@ -165,7 +162,7 @@ async function checkMarket(apiKey, tabId) {
   }
 }
 
-async function checkPriceOnce(apiKey, tabId, symbol) {
+async function checkPriceOnce(apiKey, symbol) {
   logStatus('Checking current stock price: ' + symbol);
   try {
     const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${apiKey}`);
@@ -177,15 +174,12 @@ async function checkPriceOnce(apiKey, tabId, symbol) {
       const direction = 'up';
       const price = data.c;
 
-      lastStockPrice = price;
+      socketLastPrice = price;
       logStatus(`Current price for ${symbol}: $${price}`);
 
       chrome.storage.local.set({ lastPrice: price, lastPct: 0, lastDirection: direction });
       chrome.runtime.sendMessage({ action: 'displayUpdate', price: price, pct: 0, direction: direction }).catch(() => {});
-
-      if (tabId) {
-        chrome.tabs.sendMessage(tabId, { action: 'setPrices', direction: direction, price: price }).catch(() => {});
-      }
+      if (currentTabId) chrome.tabs.sendMessage(currentTabId, { action: 'setPrices', price: price, pct: 0, direction: direction }).catch(() => {});
       return price;
 
     } else if (data.c == 0) {
@@ -194,22 +188,28 @@ async function checkPriceOnce(apiKey, tabId, symbol) {
       return 0;
     } else {
       logStatus(`Stock price API error, data: ${ JSON.stringify(data) }`);
-      setExtensionIcon('red', tabId);
+      setExtensionIcon('red');
       return false;
     }
   } catch (err) {
     logStatus(`Stock price API error: ${err.message}`);
-    setExtensionIcon('red', tabId);
+    setExtensionIcon('red');
     return false;
   }
 }
 
-function connectWebSocket(apiKey, tabId, symbol) {
-  if (socket && socket.readyState === WebSocket.OPEN) {
-    logStatus(`Subscribing to trade stream for '${symbol}'...`);
-    socket.send(JSON.stringify({ type: 'subscribe', symbol: symbol }));
-    setWsState('subscribed');
-    return;
+function connectWebSocket(apiKey, symbol) {
+
+  if (symbol == socketSymbol) {  // same symbol already subcribed, only switch tab destination
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      logStatus(`Currently subscribing to trade stream for '${symbol}'...`);
+      socket.send(JSON.stringify({ type: 'subscribe', symbol: symbol }));
+      setWsState('subscribed');
+      return;
+    }
+  } else {
+    closeWebSocket();
+    socketSymbol = symbol;
   }
 
   logStatus('Connecting to Finnhub WebSocket...');
@@ -226,31 +226,27 @@ function connectWebSocket(apiKey, tabId, symbol) {
       const msg = JSON.parse(event.data);
       if (msg.type === 'trade' && Array.isArray(msg.data)) {
         msg.data.forEach(trade => {
-          if (trade.s === currentSymbol) {
+          if (trade.s === socketSymbol) {
             const newPrice = trade.p;
 
-            setExtensionIcon('green', tabId);
+            setExtensionIcon('green');
             setWsState('active'); // Message received state
 
-            if (lastStockPrice === null) {
-              lastStockPrice = newPrice;
-              logStatus(`[WS ${currentSymbol}] Baseline Price: $${newPrice.toFixed(2)}`);
-            } else if (newPrice !== lastStockPrice) {
-              const diff = newPrice - lastStockPrice;
-              const pct = Math.abs((diff / lastStockPrice) * 100);
+            if (socketLastPrice === null) {
+              socketLastPrice = newPrice;
+              logStatus(`[WS ${socketSymbol}] Baseline Price: $${newPrice.toFixed(2)}`);
+            } else if (newPrice !== socketLastPrice) {
+              const diff = newPrice - socketLastPrice;
+              const pct = Math.abs((diff / socketLastPrice) * 100);
               const direction = diff > 0 ? 'up' : 'down';
 
-              logStatus(`[WS ${currentSymbol}] $${newPrice.toFixed(2)} (${direction === 'up' ? '+' : '-'}${pct.toFixed(4)}%)`);
+              logStatus(`[WS ${socketSymbol}] $${newPrice.toFixed(2)} (${direction === 'up' ? '+' : '-'}${pct.toFixed(4)}%)`);
 
-              lastStockPrice = newPrice;
+              socketLastPrice = newPrice;
 
               chrome.storage.local.set({ lastPrice: newPrice, lastPct: pct, lastDirection: direction });
               chrome.runtime.sendMessage({ action: 'displayUpdate', price: newPrice, pct: pct, direction: direction }).catch(() => {});
-
-              if (tabId) {
-                // chrome.tabs.sendMessage(tabId, { action: 'adjustPrices', direction: direction, pct: pct }).catch(() => {});
-                chrome.tabs.sendMessage(tabId, { action: 'setPrices', direction: direction, price: newPrice }).catch(() => {});
-              }
+              if (currentTabId) chrome.tabs.sendMessage(currentTabId, { action: 'setPrices', price: newPrice, pct: pct, direction: direction }).catch(() => {});
             }
           }
         });
@@ -276,11 +272,12 @@ function closeWebSocket() {
     socket.close();
     socket = null;
   }
-  lastStockPrice = null;
+  socketLastPrice = null;
+  socketSymbol = null;
   setWsState('disconnected');
 }
 
-async function processPageStart(tabId, pageUrl) {
+async function processPageStart(pageUrl) {
 
   const { apiKey } = await chrome.storage.sync.get(['apiKey']);
   if (!apiKey) {
@@ -288,7 +285,7 @@ async function processPageStart(tabId, pageUrl) {
     setTrackedSymbol('–––');
     setMarketState('closed');
     setWsState('disconnected');
-    setExtensionIcon('red', tabId);
+    setExtensionIcon('red');
     return;
   }
 
@@ -303,7 +300,7 @@ async function processPageStart(tabId, pageUrl) {
   }
 
   if (symbol) {
-    price = await checkPriceOnce(apiKey, tabId, symbol);
+    price = await checkPriceOnce(apiKey, symbol);
   } else {
     logStatus(`No valid symbol for domain: ${domain}`);
   }
@@ -314,31 +311,35 @@ async function processPageStart(tabId, pageUrl) {
     if (defaultSymbol) {
       logStatus(`Default symbol found: ${defaultSymbol}`);
       symbol = defaultSymbol;
-      price = await checkPriceOnce(apiKey, tabId, symbol);
+      price = await checkPriceOnce(apiKey, symbol);
     }
   }
 
   setTrackedSymbol(symbol);
 
   if (!price) {
-    setExtensionIcon('grey', tabId);
+    setExtensionIcon('grey');
     setWsState('disconnected');
     emptyPrices();
     return;
   }
 
-  if (await checkMarket(apiKey, tabId)) {
-    connectWebSocket(apiKey, tabId, symbol);
+  if (await checkMarket(apiKey)) {
+    connectWebSocket(apiKey, symbol);
   }
 }
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'pageStarted') {
     // logStatus(`[Debug] Initialized from tab: ${sender.tab.url} (${sender.tab.id})`);
-
     const tabId = sender.tab ? sender.tab.id : null;
     const pageUrl = sender.tab ? sender.tab.url : '';
-    processPageStart(tabId, pageUrl);
+    if (pageUrl?.startsWith("http://") || pageUrl?.startsWith("https://")) {
+      currentTabId = tabId;
+    } else {
+      currentTabId = null;
+    }
+    processPageStart(pageUrl);
     sendResponse({ status: 'started' });
   } else if (request.action === 'saveApiKey') {
     logStatus('API Key updated. Re-checking active tab...');

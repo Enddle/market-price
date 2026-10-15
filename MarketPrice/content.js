@@ -101,6 +101,7 @@ function setLocateMode(locate) {
 }
 
 function setFollowPrice(follow) {
+  console.log(`[Market Price] following price: ${follow}`);
 
   if (!isFollowingPrice && follow) {  // turning on
     const highlights = document.querySelectorAll('.highlighted-price-ext');
@@ -277,7 +278,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
   } else if (request.action === 'setPrices') {
     lastPrice = request.price;
-    console.log(`[Market Price] price received: ${lastPrice}`);
+    console.log(`[Market Price] price received: ${lastPrice} (${request.direction} ${request.pct})`);
     if (isFollowingPrice && request.price) {
       setPrices(request.price, request.direction);
     }
