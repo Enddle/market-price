@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Market Price",
-  "version": "1.18.34",
+  "version": "1.18.35",
   "description": "Everything come with a price, specifically, at the market price.",
   "icons": {
     "16":  "icons/icon_16.png",
@@ -21,10 +21,6 @@
       "128": "icons/icon_128.png"
     }
   },
-  "host_permissions": [
-    "https://finnhub.io/*",
-    "wss://ws.finnhub.io/*"
-  ],
   "permissions": ["storage", "activeTab", "tabs"],
   "content_scripts": [
     {

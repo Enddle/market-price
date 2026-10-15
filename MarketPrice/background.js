@@ -37,10 +37,11 @@ async function setExtensionIcon(color, tabId) {
   if (!icons) return;
   if (!tabId) return;
 
-  await chrome.action.setIcon({
-    tabId: tabId,
-    path: icons
-  }).catch(() => {});
+  try {
+    await chrome.action.setIcon({ tabId: tabId, path: icons });
+  } catch (error) {
+    await chrome.action.setIcon({ path: ICON_SETS['red'] });  // global red when tabId error
+  }
 }
 
 function logStatus(message) {
