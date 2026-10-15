@@ -301,7 +301,10 @@ document.addEventListener('DOMContentLoaded', () => {
   async function sendMessageToTab(message) {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (tab?.id) {
-      return chrome.tabs.sendMessage(tab.id, message);
+      if (tab.url?.startsWith("http://") || tab.url?.startsWith("https://")) {
+        return chrome.tabs.sendMessage(tab.id, message);
+      }
     }
+    return false;
   }
 });
