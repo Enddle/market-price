@@ -4,7 +4,9 @@ let socketLastPrice = null;
 let statusLogs = [];
 let currentTabId = null;
 
-importScripts('domainMap.js');
+if (typeof importScripts === 'function') {
+  importScripts('domainMap.js');
+}
 
 const ICON_SETS = {
   grey: {
@@ -78,7 +80,7 @@ function emptyPrices() {
 
 function getRootDomainName(urlStr) {
   if (!urlStr) return false;
-  if (urlStr.startsWith('chrome://') || urlStr.startsWith('chrome-extension://')) {
+  if (/^(chrome:|chrome-extension:)/.test(urlStr)) {
     return 'chrome';
   }
   try {

@@ -210,6 +210,9 @@ details[open] .section-title::after {
   color: #111827;
 }
 
+.btn-eye[data-eye-on = true] .eye-icon-off { display: none; }
+.btn-eye:not([data-eye-on = true]) .eye-icon-on { display: none; }
+
 /* Backgroundless Refresh Button */
 .btn-refresh {
   background: transparent;
@@ -268,6 +271,7 @@ textarea#statusText {
   color: #000000;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 11px;
+  margin: 2px 0;
   padding: 6px;
   border: 1px solid #d1d5db;
   border-radius: 4px;
@@ -278,7 +282,6 @@ textarea#statusText {
 .action-buttons {
   display: flex;
   gap: 6px;
-  margin-top: 8px;
   user-select: none;
 }
 

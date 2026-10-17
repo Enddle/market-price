@@ -12,13 +12,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const apiKeyInput = document.getElementById('apiKeyInput');
   const apiKeyNotice = document.getElementById('apiKeyNotice');
   const btnToggleVisibility = document.getElementById('btnToggleVisibility');
-  const eyeIcon = document.getElementById('eyeIcon');
   const btnSaveKey = document.getElementById('btnSaveKey');
   const statusText = document.getElementById('statusText');
   const btnRise = document.getElementById('btnRise');
   const btnLocate = document.getElementById('btnLocate');
   const btnFall = document.getElementById('btnFall');
 
+  const aboutSection = document.getElementById('aboutSection');
   const finnhubLink = document.getElementById('finnhubLink');
   const githubLink = document.getElementById('githubLink');
   const instagramLink = document.getElementById('instagramLink');
@@ -28,10 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let isFollowingPrice = false;
   let isLocateActive = false;
-  let lastPrice = 0;
-
-  const eyeSvg = `<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>`;
-  const eyeOffSvg = `<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line>`;
+  // let lastPrice = 0;  // assigned never used
 
   // Load saved state (symbol, market, websocket, logs, percentage)
   chrome.storage.local.get(
@@ -93,7 +90,7 @@ document.addEventListener('DOMContentLoaded', () => {
       priceDisplay.textContent = '$--.--';
     } else {
       priceDisplay.textContent = '$' + parseFloat(price).toFixed(2);
-      lastPrice = price;
+      // lastPrice = price;  // assigned never used
     }
 
     if (!pct || direction === 'neutral') {
@@ -180,10 +177,10 @@ document.addEventListener('DOMContentLoaded', () => {
   btnToggleVisibility.addEventListener('click', () => {
     if (apiKeyInput.type === 'password') {
       apiKeyInput.type = 'text';
-      eyeIcon.innerHTML = eyeSvg;
+      btnToggleVisibility.dataset.eyeOn = true;
     } else {
       apiKeyInput.type = 'password';
-      eyeIcon.innerHTML = eyeOffSvg;
+      btnToggleVisibility.dataset.eyeOn = false;
     }
   });
 
@@ -257,6 +254,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   btnRise.addEventListener('click', () => handleManualTest('up'));
   btnFall.addEventListener('click', () => handleManualTest('down'));
+
+  settingsSection.addEventListener('click', () => { aboutSection.open = false; });
+  aboutSection.addEventListener('click', () => { settingsSection.open = false; });
 
   // display version number
   const versionEl = document.getElementById('versionNumber');
